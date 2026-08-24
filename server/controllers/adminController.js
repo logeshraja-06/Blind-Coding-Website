@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { memoryStore } from '../config/db.js';
 import { INITIAL_QUESTIONS } from '../utils/seedData.js';
+import { getActiveConfig } from './quizController.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'TECH_FORCE_BLIND_CODING_2026_SECRET_KEY';
 
@@ -81,6 +82,8 @@ export const getDashboardStats = async (req, res) => {
     const totalScore = completed.reduce((acc, curr) => acc + (curr.score || 0), 0);
     const averageScore = completed.length > 0 ? Math.round((totalScore / (completed.length * 25)) * 100) : 72;
 
+    const totalActivityWarnings = attempts.reduce((acc, curr) => acc + (curr.totalWarnings || 0), 0);
+
     // Year breakdown
     const yearStats = {
       'IV Year': attempts.filter((a) => a.year === 'IV Year').length,
@@ -96,6 +99,7 @@ export const getDashboardStats = async (req, res) => {
         quizCompleted: Math.max(142, completed.length),
         inProgress: inProgress.length,
         averageScore,
+        totalActivityWarnings,
         yearStats,
       },
     });
@@ -121,6 +125,9 @@ export const getParticipants = async (req, res) => {
       percentage: a.percentage,
       timeFormatted: a.timeFormatted || '--:--',
       timeTakenSeconds: a.timeTakenSeconds,
+      tabSwitchCount: a.tabSwitchCount || 0,
+      fullscreenExitCount: a.fullscreenExitCount || 0,
+      totalWarnings: a.totalWarnings || 0,
       status: a.status === 'COMPLETED' ? 'Completed' : a.status === 'IN_PROGRESS' ? 'In Progress' : 'Not Started',
       submittedAt: a.submittedAt,
     }));
@@ -159,6 +166,43 @@ export const getParticipants = async (req, res) => {
   }
 };
 
+// Admin-Only Quiz Activity Log Monitor
+export const getAdminActivity = async (req, res) => {
+  try {
+    const config = getActiveConfig();
+    const attempts = Array.from(memoryStore.quizAttempts.values()).map((a) => {
+      const logs = a.activityLogs || [];
+      const latestLog = logs.length > 0 ? logs[logs.length - 1] : null;
+
+      return {
+        id: a.id,
+        name: a.studentName,
+        registerNumber: a.registerNumber,
+        department: a.department,
+        year: a.year,
+        class: a.class,
+        status: a.status === 'COMPLETED' ? 'Completed' : a.status === 'IN_PROGRESS' ? 'In Progress' : 'Not Started',
+        tabSwitchCount: a.tabSwitchCount || 0,
+        fullscreenExitCount: a.fullscreenExitCount || 0,
+        totalWarnings: a.totalWarnings || 0,
+        maxWarnings: config.maxActivityWarnings || 3,
+        warningLimitReached: (a.totalWarnings || 0) >= (config.maxActivityWarnings || 3),
+        latestActivityTime: latestLog ? latestLog.timestamp : a.startedAt || null,
+        activityLogs: logs,
+      };
+    });
+
+    return res.json({
+      success: true,
+      total: attempts.length,
+      maxWarnings: config.maxActivityWarnings || 3,
+      attempts,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to retrieve activity monitor data.' });
+  }
+};
+
 export const getLeaderboard = async (req, res) => {
   try {
     // ADMIN ONLY: Ranks strictly by 1. Score desc, 2. Time taken asc
@@ -183,6 +227,7 @@ export const getLeaderboard = async (req, res) => {
         total: a.totalQuestions || 25,
         percentage: a.percentage,
         timeFormatted: a.timeFormatted,
+        totalWarnings: a.totalWarnings || 0,
         submittedAt: a.submittedAt,
       }));
 
@@ -240,5 +285,48 @@ export const addQuestion = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Failed to add question.' });
+  }
+};
+
+// Admin Event Settings CRUD
+export const getAdminSettings = async (req, res) => {
+  try {
+    const config = getActiveConfig();
+    return res.json({
+      success: true,
+      config,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to retrieve admin settings.' });
+  }
+};
+
+export const updateAdminSettings = async (req, res) => {
+  try {
+    const updates = req.body;
+    if (!updates) {
+      return res.status(400).json({ success: false, message: 'Configuration payload required.' });
+    }
+
+    const currentConfig = getActiveConfig();
+    const updatedConfig = {
+      ...currentConfig,
+      ...updates,
+      quizDurationMinutes: updates.quizDurationMinutes ? Number(updates.quizDurationMinutes) : currentConfig.quizDurationMinutes,
+      totalQuestions: updates.totalQuestions ? Number(updates.totalQuestions) : currentConfig.totalQuestions,
+      maxActivityWarnings: updates.maxActivityWarnings !== undefined ? Number(updates.maxActivityWarnings) : currentConfig.maxActivityWarnings,
+      passingPercentage: updates.passingPercentage !== undefined ? Number(updates.passingPercentage) : currentConfig.passingPercentage,
+      updatedAt: new Date().toISOString(),
+    };
+
+    memoryStore.eventConfig = updatedConfig;
+
+    return res.json({
+      success: true,
+      message: 'Event Configuration updated successfully.',
+      config: updatedConfig,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to update event configuration.' });
   }
 };

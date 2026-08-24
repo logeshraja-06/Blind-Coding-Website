@@ -72,8 +72,39 @@ const quizAttemptSchema = new mongoose.Schema(
       default: 'NOT_STARTED',
       index: true,
     },
+    // Quiz Activity & Warning System
+    tabSwitchCount: {
+      type: Number,
+      default: 0,
+    },
+    fullscreenExitCount: {
+      type: Number,
+      default: 0,
+    },
+    totalWarnings: {
+      type: Number,
+      default: 0,
+    },
+    activityLogs: [
+      {
+        type: {
+          type: String,
+          enum: ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'QUIZ_STARTED', 'QUIZ_SUBMITTED'],
+          required: true,
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        details: {
+          type: String,
+          default: '',
+        },
+      },
+    ],
   },
   { timestamps: true }
 );
 
-export const QuizAttempt = mongoose.models.QuizAttempt || mongoose.model('QuizAttempt', quizAttemptSchema);
+export const QuizAttempt =
+  mongoose.models.QuizAttempt || mongoose.model('QuizAttempt', quizAttemptSchema);

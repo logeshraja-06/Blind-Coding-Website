@@ -1,32 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ArrowRight,
-  Brain,
-  Zap,
-  Trophy,
   Clock,
   ShieldCheck,
-  HelpCircle,
-  ChevronDown,
-  Sparkles,
-  CheckCircle2,
-  Lock,
-  RefreshCw,
+  Zap,
   Terminal,
-  FileCode,
   Calendar,
   UserCheck,
   GraduationCap,
-  Users,
-  Code2
+  Sparkles,
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
 import { FloatingCodeBg } from '../components/common/FloatingCodeBg';
 import { AnimatedCounter } from '../components/common/AnimatedCounter';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -34,30 +25,6 @@ import { TechForceLogo } from '../assets/logo/TechForceLogo';
 
 export const Home = () => {
   const navigate = useNavigate();
-  const [openFaq, setOpenFaq] = useState(0);
-
-  const faqData = [
-    {
-      q: 'How many questions are in the Blind Coding contest?',
-      a: 'The assessment contains exactly 25 multiple-choice questions covering core programming concepts, pointer logic, recursion, asynchronous behavior, and output predictions in JavaScript, Python, C++, and Algorithms.',
-    },
-    {
-      q: 'Who is eligible to participate in this event?',
-      a: 'This event is exclusively conducted for Computer Science and Engineering (CSE) students across 1st, 2nd, 3rd, and 4th years for the Academic Year 2025–2026.',
-    },
-    {
-      q: 'Why is Register Number mandatory?',
-      a: 'Your numeric college register number (e.g. 953710) uniquely verifies your participation, prevents duplicate submissions, and maps to official department merit records.',
-    },
-    {
-      q: 'Can I see the answer key or other participants’ scores?',
-      a: 'No. To maintain complete competition integrity, students will only see their own final score and percentage upon submission. Answer reviews and leaderboard ranks are strictly confidential and accessible only by administrators.',
-    },
-    {
-      q: 'What happens when the 60-minute timer runs out?',
-      a: 'The server automatically locks your attempt, saves all your selected options, calculates your score, and transitions you directly to your private score screen.',
-    },
-  ];
 
   const rulesData = [
     {
@@ -115,221 +82,213 @@ export const Home = () => {
       <Navbar />
 
       <main className="flex-1">
-        {/* HERO SECTION — IMMERSIVE & HIGH IMPACT */}
-        <section className="relative min-h-[95vh] flex items-center justify-center pt-28 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden bg-ivory">
-          <FloatingCodeBg opacity={0.55} />
+        {/* HERO SECTION */}
+        <section className="relative min-h-[90vh] flex items-center justify-center pt-28 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden bg-ivory">
+          <FloatingCodeBg opacity={0.5} />
 
-          <div className="max-w-6xl mx-auto text-center relative z-10">
-            {/* Association & Department Top Pill */}
-            <motion.div
-              initial={{ opacity: 0, y: -15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/90 border border-teaGreen-400 shadow-sm backdrop-blur-md mb-6"
-            >
-              <TechForceLogo className="w-6 h-6" showText={false} />
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-drabDark">
-                <span className="text-celticBlue">TECH FORCE</span>
-                <span>•</span>
-                <span>DEPARTMENT OF CSE (2025–2026)</span>
-              </div>
-            </motion.div>
+          <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+            {/* Left Column: Heading, Details & CTAs */}
+            <div className="lg:col-span-7 text-left space-y-6">
+              {/* Badge: TECH FORCE PRESENTS */}
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white border border-teaGreen-300 shadow-sm"
+              >
+                <TechForceLogo className="w-5 h-5" showText={false} />
+                <span className="text-xs font-bold uppercase tracking-wider text-drabDark font-comfortaa">
+                  TECH FORCE PRESENTS
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-celticBlue" />
+                <span className="text-[11px] font-semibold text-drabDark/70 font-poppins">DEPARTMENT OF CSE</span>
+              </motion.div>
 
-            {/* Staggered Major Heading */}
+              {/* Main Heading */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold font-comfortaa tracking-tight text-drabDark leading-[1.05]">
+                  BLIND<br />
+                  <span className="text-celticBlue">CODING</span>
+                </h1>
+              </motion.div>
+
+              {/* Tagline */}
+              <motion.p
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="text-lg sm:text-xl text-drabDark/85 font-medium leading-relaxed max-w-xl font-poppins"
+              >
+                Think Fast. Trust Your Logic. Code Beyond What You See.
+              </motion.p>
+
+              {/* Event Quick Badges */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.25 }}
+                className="flex flex-wrap items-center gap-3 pt-2 font-poppins"
+              >
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-teaGreen-300 shadow-subtle text-xs font-semibold text-drabDark">
+                  <Calendar className="w-4 h-4 text-celticBlue" />
+                  <span>31 JULY 2026</span>
+                </div>
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-teaGreen-300 shadow-subtle text-xs font-semibold text-drabDark">
+                  <GraduationCap className="w-4 h-4 text-teaGreen-600" />
+                  <span>CSE STUDENTS</span>
+                </div>
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-teaGreen-300 shadow-subtle text-xs font-semibold text-drabDark">
+                  <Clock className="w-4 h-4 text-drabDark" />
+                  <span>25 QUESTIONS • 60 MINS</span>
+                </div>
+              </motion.div>
+
+              {/* CTAs */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="flex flex-col sm:flex-row items-center gap-4 pt-4"
+              >
+                <Button
+                  size="lg"
+                  variant="primary"
+                  onClick={() => navigate('/register')}
+                  className="w-full sm:w-auto font-bold px-8 py-4 text-base shadow-premium font-poppins"
+                  icon={ArrowRight}
+                  iconPosition="right"
+                >
+                  REGISTER NOW
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => {
+                    const elem = document.getElementById('details');
+                    elem?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="w-full sm:w-auto font-semibold px-6 font-poppins"
+                >
+                  EVENT DETAILS
+                </Button>
+              </motion.div>
+            </div>
+
+            {/* Right Column: Layered Programming Visual Area */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              <h1 className="text-5xl sm:text-7xl lg:text-9xl font-bold font-comfortaa tracking-tight text-drabDark leading-[1.02] mb-6">
-                BLIND<br />
-                <span className="text-celticBlue drop-shadow-sm">CODING</span>
-              </h1>
-            </motion.div>
-
-            {/* Official Tagline */}
-            <motion.p
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-lg sm:text-2xl text-drabDark font-medium max-w-3xl mx-auto leading-relaxed mb-8"
+              className="lg:col-span-5 relative"
             >
-              Think Fast. Trust Your Logic. Code Beyond What You See.
-            </motion.p>
+              <div className="relative w-full aspect-[4/3] max-w-md mx-auto">
+                <div className="absolute inset-0 bg-celticBlue/10 rounded-3xl blur-2xl transform -rotate-3" />
+                <div className="absolute inset-0 bg-teaGreen/20 rounded-3xl blur-xl transform rotate-2" />
 
-            {/* Official Event Metadata Badges */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.25 }}
-              className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-10 max-w-2xl mx-auto"
-            >
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-teaGreen-300 shadow-subtle text-xs font-bold text-drabDark">
-                <Calendar className="w-4 h-4 text-celticBlue" />
-                <span>31 JULY 2026 — FRIDAY</span>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-teaGreen-300 shadow-subtle text-xs font-bold text-drabDark">
-                <GraduationCap className="w-4 h-4 text-teaGreen-600" />
-                <span>CSE STUDENTS</span>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-teaGreen-300 shadow-subtle text-xs font-bold text-drabDark">
-                <Trophy className="w-4 h-4 text-vanilla-500" />
-                <span>25 QUESTIONS • 60 MINS</span>
-              </div>
-            </motion.div>
+                {/* Terminal Simulation Window */}
+                <div className="relative rounded-2xl overflow-hidden bg-drabDark border border-drabDark-600 shadow-2xl z-10">
+                  <div className="px-4 py-3 bg-drabDark-700 border-b border-drabDark-600 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                      <div className="w-3 h-3 rounded-full bg-vanilla/80" />
+                      <div className="w-3 h-3 rounded-full bg-teaGreen/80" />
+                    </div>
+                    <div className="text-[11px] font-mono text-teaGreen-300 font-semibold flex items-center gap-1.5">
+                      <Terminal className="w-3.5 h-3.5 text-teaGreen" />
+                      blind_assessment.cpp
+                    </div>
+                    <span className="text-[10px] text-ivory/50 font-mono">CSE • 2026</span>
+                  </div>
 
-            {/* Primary & Secondary CTAs */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto"
-            >
-              <Button
-                size="lg"
-                variant="primary"
-                onClick={() => navigate('/register')}
-                className="w-full sm:w-auto font-bold px-8 py-4 text-base shadow-premium"
-                icon={ArrowRight}
-                iconPosition="right"
-              >
-                REGISTER FOR EVENT
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  const elem = document.getElementById('details');
-                  elem?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full sm:w-auto font-semibold"
-              >
-                EXPLORE EVENT
-              </Button>
+                  <div className="p-5 font-mono text-xs text-teaGreen-100 leading-relaxed overflow-hidden">
+                    <div className="text-ivory/40">// TECH FORCE • Logic Challenge</div>
+                    <div className="text-celticBlue-300">#include &lt;iostream&gt;</div>
+                    <div className="text-celticBlue-300">using namespace std;</div>
+                    <div className="pt-2"><span className="text-vanilla">int</span> <span className="text-teaGreen">blindLogic</span>() {'{'}</div>
+                    <div className="pl-4 text-ivory/90"><span className="text-vanilla">int</span> x = 10;</div>
+                    <div className="pl-4 text-ivory/90">cout &lt;&lt; (<span className="text-teaGreen-300">x++</span>) &lt;&lt; <span className="text-vanilla">" "</span> &lt;&lt; (<span className="text-teaGreen-300">++x</span>);</div>
+                    <div className="pl-4 text-vanilla">return 0;</div>
+                    <div>{'}'}</div>
+                    <div className="pt-2 text-teaGreen-400 font-bold flex items-center gap-1">
+                      <span className="animate-pulse">❯</span> Predict Output: <span className="text-vanilla underline decoration-teaGreen">10 12</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating Card 1 */}
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute -top-6 -right-6 z-20 p-3.5 rounded-2xl bg-white border-2 border-vanilla shadow-lg flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-vanilla text-drabDark flex items-center justify-center font-bold text-lg font-comfortaa">
+                    25
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-bold text-drabDark font-comfortaa">MCQ Logic</div>
+                    <div className="text-[10px] text-drabDark/60 font-semibold font-poppins">60 Mins Challenge</div>
+                  </div>
+                </motion.div>
+
+                {/* Floating Card 2 */}
+                <motion.div
+                  animate={{ y: [0, 6, 0] }}
+                  transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                  className="absolute -bottom-6 -left-6 z-20 p-3.5 rounded-2xl bg-white border-2 border-teaGreen-400 shadow-lg flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-teaGreen text-drabDark flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-drabDark" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-bold text-drabDark font-comfortaa">Verified Merit</div>
+                    <div className="text-[10px] text-teaGreen-600 font-semibold font-poppins">CSI Chapter Ready</div>
+                  </div>
+                </motion.div>
+              </div>
             </motion.div>
           </div>
         </section>
 
-        {/* SECTION 2: ENTER THE CHALLENGE (Gaming × Logic Cards) */}
-        <section id="about" className="py-24 px-4 sm:px-6 lg:px-8 bg-white relative">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-celticBlue mb-2 block">
-                The Assessment Concept
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-bold font-comfortaa text-drabDark mb-4">
-                Enter the Challenge
-              </h2>
-              <p className="text-base text-drabDark/70 leading-relaxed">
-                Blind Coding tests your pure mental compiler. Analyze complex code structures, spot syntactic subtleties, and predict program behaviors under timed conditions without editor assistance.
-              </p>
-            </div>
-
-            {/* 3 Interactive Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Card 1: THINK */}
-              <Card
-                variant="ivory"
-                hoverEffect
-                className="p-8 border-2 border-teaGreen-300 relative overflow-hidden group shadow-subtle"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-vanilla-200 text-drabDark flex items-center justify-center text-2xl mb-6 shadow-sm group-hover:scale-110 transition-transform">
-                  🧠
-                </div>
-                <div className="text-xs font-bold font-comfortaa text-celticBlue uppercase tracking-widest mb-1">
-                  STAGE 01
-                </div>
-                <h3 className="text-2xl font-bold font-comfortaa text-drabDark mb-3">
-                  THINK
-                </h3>
-                <p className="text-sm text-drabDark/70 leading-relaxed">
-                  Analyze algorithms, pointer logic, asynchronous microtasks, and recursive execution paths.
-                </p>
-              </Card>
-
-              {/* Card 2: DECIDE */}
-              <Card
-                variant="ivory"
-                hoverEffect
-                className="p-8 border-2 border-teaGreen-300 relative overflow-hidden group shadow-subtle"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-teaGreen-300 text-drabDark flex items-center justify-center text-2xl mb-6 shadow-sm group-hover:scale-110 transition-transform">
-                  ⚡
-                </div>
-                <div className="text-xs font-bold font-comfortaa text-teaGreen-600 uppercase tracking-widest mb-1">
-                  STAGE 02
-                </div>
-                <h3 className="text-2xl font-bold font-comfortaa text-drabDark mb-3">
-                  DECIDE
-                </h3>
-                <p className="text-sm text-drabDark/70 leading-relaxed">
-                  Choose the correct answer from precise MCQ options before the 60-minute timer reaches zero.
-                </p>
-              </Card>
-
-              {/* Card 3: COMPETE */}
-              <Card
-                variant="ivory"
-                hoverEffect
-                className="p-8 border-2 border-teaGreen-300 relative overflow-hidden group shadow-subtle"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-celticBlue-100 text-celticBlue flex items-center justify-center text-2xl mb-6 shadow-sm group-hover:scale-110 transition-transform">
-                  🏆
-                </div>
-                <div className="text-xs font-bold font-comfortaa text-vanilla-500 uppercase tracking-widest mb-1">
-                  STAGE 03
-                </div>
-                <h3 className="text-2xl font-bold font-comfortaa text-drabDark mb-3">
-                  COMPETE
-                </h3>
-                <p className="text-sm text-drabDark/70 leading-relaxed">
-                  Submit your assessment, earn your verified score, and prove your problem-solving prowess.
-                </p>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        {/* SECTION 3: EVENT STATS SECTION */}
+        {/* SECTION: EVENT STATS */}
         <section id="stats" className="py-20 bg-ivory border-y border-teaGreen-300 relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-              {/* Stat 1 */}
               <div className="p-6 sm:p-8 rounded-3xl bg-white border border-teaGreen-300 text-center shadow-subtle">
                 <div className="text-4xl sm:text-5xl font-bold font-comfortaa text-celticBlue mb-2">
                   <AnimatedCounter target={25} />
                 </div>
-                <div className="text-xs sm:text-sm font-bold uppercase tracking-widest text-drabDark/70">
+                <div className="text-xs sm:text-sm font-bold uppercase tracking-widest text-drabDark/70 font-poppins">
                   QUESTIONS
                 </div>
               </div>
 
-              {/* Stat 2 */}
               <div className="p-6 sm:p-8 rounded-3xl bg-white border border-teaGreen-300 text-center shadow-subtle">
                 <div className="text-4xl sm:text-5xl font-bold font-comfortaa text-drabDark mb-2">
                   <AnimatedCounter target={60} />
                 </div>
-                <div className="text-xs sm:text-sm font-bold uppercase tracking-widest text-drabDark/70">
+                <div className="text-xs sm:text-sm font-bold uppercase tracking-widest text-drabDark/70 font-poppins">
                   MINUTES
                 </div>
               </div>
 
-              {/* Stat 3 */}
               <div className="p-6 sm:p-8 rounded-3xl bg-white border border-teaGreen-300 text-center shadow-subtle">
                 <div className="text-4xl sm:text-5xl font-bold font-comfortaa text-celticBlue mb-2">
                   <AnimatedCounter target={1} prefix="0" />
                 </div>
-                <div className="text-xs sm:text-sm font-bold uppercase tracking-widest text-drabDark/70">
+                <div className="text-xs sm:text-sm font-bold uppercase tracking-widest text-drabDark/70 font-poppins">
                   CHALLENGE
                 </div>
               </div>
 
-              {/* Stat 4 */}
               <div className="p-6 sm:p-8 rounded-3xl bg-white border border-teaGreen-300 text-center shadow-subtle">
                 <div className="text-4xl sm:text-5xl font-bold font-comfortaa text-teaGreen-600 mb-2">
                   CSE
                 </div>
-                <div className="text-xs sm:text-sm font-bold uppercase tracking-widest text-drabDark/70">
+                <div className="text-xs sm:text-sm font-bold uppercase tracking-widest text-drabDark/70 font-poppins">
                   STUDENTS
                 </div>
               </div>
@@ -337,17 +296,17 @@ export const Home = () => {
           </div>
         </section>
 
-        {/* SECTION 4: OFFICIAL EVENT DETAILS & COORDINATORS */}
+        {/* SECTION: OFFICIAL EVENT DETAILS & COORDINATORS */}
         <section id="details" className="py-24 px-4 sm:px-6 lg:px-8 bg-white relative">
           <div className="max-w-6xl mx-auto">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-celticBlue mb-2 block">
+              <span className="text-xs font-bold uppercase tracking-widest text-celticBlue mb-2 block font-comfortaa">
                 Official Information
               </span>
               <h2 className="text-3xl sm:text-4xl font-bold font-comfortaa text-drabDark mb-4">
                 Event Organization & Schedule
               </h2>
-              <p className="text-base text-drabDark/70">
+              <p className="text-base text-drabDark/70 font-poppins">
                 Conducted by the Department of Computer Science & Engineering under TECH FORCE association.
               </p>
             </div>
@@ -361,13 +320,13 @@ export const Home = () => {
                     <h3 className="font-comfortaa font-bold text-lg text-drabDark">
                       BLIND CODING 2026
                     </h3>
-                    <span className="text-xs text-celticBlue font-semibold uppercase tracking-wider">
+                    <span className="text-xs text-celticBlue font-semibold uppercase tracking-wider font-poppins">
                       Official Department Qualifier
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-poppins">
                   <div className="p-3.5 rounded-xl bg-white border border-teaGreen-200">
                     <span className="text-drabDark/60 uppercase text-[10px] block font-bold">Event Date</span>
                     <span className="font-bold text-drabDark text-sm">31.07.2026 — Friday</span>
@@ -396,7 +355,7 @@ export const Home = () => {
                   <h3 className="font-comfortaa font-bold text-lg text-drabDark">
                     Event Coordinators
                   </h3>
-                  <p className="text-xs text-drabDark/60">Faculty & Student leadership team</p>
+                  <p className="text-xs text-drabDark/60 font-poppins">Faculty & Student leadership team</p>
                 </div>
 
                 {/* Student Coordinators */}
@@ -404,7 +363,7 @@ export const Home = () => {
                   <span className="text-xs font-bold font-comfortaa uppercase tracking-wider text-celticBlue block">
                     Student Coordinators
                   </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-poppins">
                     <div className="p-3.5 rounded-xl bg-ivory border border-teaGreen-200">
                       <div className="font-bold text-drabDark">Mr. S. Logesh Raja</div>
                       <div className="text-[11px] text-drabDark/60 font-semibold">IV Year CSE</div>
@@ -421,7 +380,7 @@ export const Home = () => {
                   <span className="text-xs font-bold font-comfortaa uppercase tracking-wider text-teaGreen-600 block">
                     Faculty Coordinators
                   </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-poppins">
                     <div className="p-3.5 rounded-xl bg-ivory border border-teaGreen-200">
                       <div className="font-bold text-drabDark">Mrs. S. Somiya</div>
                       <div className="text-[11px] text-drabDark/60 font-semibold">ASP / CSE</div>
@@ -437,17 +396,17 @@ export const Home = () => {
           </div>
         </section>
 
-        {/* SECTION 5: RULES SECTION (8 Visual Cards) */}
+        {/* SECTION: RULES SECTION */}
         <section id="rules" className="py-24 px-4 sm:px-6 lg:px-8 bg-ivory">
           <div className="max-w-7xl mx-auto">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-celticBlue mb-2 block">
+              <span className="text-xs font-bold uppercase tracking-widest text-celticBlue mb-2 block font-comfortaa">
                 Official Rules
               </span>
               <h2 className="text-3xl sm:text-4xl font-bold font-comfortaa text-drabDark mb-4">
                 Assessment Protocol & Guidelines
               </h2>
-              <p className="text-base text-drabDark/70">
+              <p className="text-base text-drabDark/70 font-poppins">
                 Please review the 8 mandatory competition rules before entering the platform.
               </p>
             </div>
@@ -475,66 +434,11 @@ export const Home = () => {
                       <h3 className="font-comfortaa font-bold text-sm text-drabDark mb-2">
                         {rule.title}
                       </h3>
-                      <p className="text-xs text-drabDark/70 leading-relaxed">
+                      <p className="text-xs text-drabDark/70 leading-relaxed font-poppins">
                         {rule.desc}
                       </p>
                     </div>
                   </Card>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* SECTION 6: FAQ SECTION */}
-        <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-celticBlue mb-2 block">
-                Questions & Answers
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-bold font-comfortaa text-drabDark mb-4">
-                Frequently Asked Questions
-              </h2>
-              <p className="text-sm text-drabDark/70">
-                Need clarifications regarding the Blind Coding assessment platform?
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {faqData.map((item, index) => {
-                const isOpen = openFaq === index;
-                return (
-                  <div
-                    key={index}
-                    className="rounded-2xl border border-teaGreen-300 overflow-hidden bg-ivory transition-colors"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setOpenFaq(isOpen ? -1 : index)}
-                      className="w-full p-5 text-left flex items-center justify-between gap-4 font-comfortaa font-bold text-sm sm:text-base text-drabDark hover:text-celticBlue transition-colors cursor-pointer"
-                    >
-                      <span>{item.q}</span>
-                      <ChevronDown
-                        className={`w-5 h-5 flex-shrink-0 text-drabDark/60 transition-transform duration-200 ${
-                          isOpen ? 'rotate-180 text-celticBlue' : ''
-                        }`}
-                      />
-                    </button>
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="px-5 pb-5 pt-1 text-xs sm:text-sm text-drabDark/80 leading-relaxed border-t border-teaGreen-200/50"
-                        >
-                          {item.a}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
                 );
               })}
             </div>

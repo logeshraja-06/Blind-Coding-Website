@@ -37,7 +37,7 @@ export const api = {
     }
   },
 
-  // 3. Start Quiz Countdown
+  // 3. Start Quiz Countdown & Retrieve Server StartedAt & Warning State
   async startQuiz(registerNumber) {
     try {
       const res = await fetch(`${API_BASE_URL}/quiz/start`, {
@@ -52,6 +52,10 @@ export const api = {
         startedAt: new Date().toISOString(),
         remainingSeconds: 3600,
         savedAnswers: {},
+        tabSwitchCount: 0,
+        fullscreenExitCount: 0,
+        totalWarnings: 0,
+        maxWarnings: 3,
       };
     }
   },
@@ -67,7 +71,6 @@ export const api = {
     } catch (err) {
       console.warn('Questions fetch fallback to local questions data:', err);
     }
-    // Fallback to local import if backend is starting
     const { QUIZ_QUESTIONS } = await import('../data/questions.js');
     return QUIZ_QUESTIONS;
   },
@@ -82,11 +85,33 @@ export const api = {
       });
       return await res.json();
     } catch (err) {
-      return { success: true };
+      return { success: false, error: err.message };
     }
   },
 
-  // 6. Submit Assessment (Server computes score)
+  // 6. Log Activity (Tab Switch / Fullscreen Exit)
+  async logActivity(registerNumber, activityType) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/quiz/activity`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ registerNumber, activityType }),
+      });
+      return await res.json();
+    } catch (err) {
+      console.warn('Activity logging fallback:', err);
+      return {
+        success: true,
+        tabSwitchCount: 0,
+        fullscreenExitCount: 0,
+        totalWarnings: 0,
+        maxWarnings: 3,
+        shouldAutoSubmit: false,
+      };
+    }
+  },
+
+  // 7. Submit Assessment (Server computes score)
   async submitQuiz(registerNumber, isAutoSubmit = false) {
     try {
       const res = await fetch(`${API_BASE_URL}/quiz/submit`, {
@@ -109,7 +134,7 @@ export const api = {
     }
   },
 
-  // 7. Get Candidate Result
+  // 8. Get Candidate Result
   async getStudentResult(registerNumber) {
     try {
       const res = await fetch(`${API_BASE_URL}/quiz/result/${encodeURIComponent(registerNumber)}`);
@@ -117,6 +142,28 @@ export const api = {
     } catch (err) {
       return { success: false };
     }
+  },
+
+  // 9. Get Public Quiz Configuration
+  async getQuizConfig() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/quiz/config`);
+      const data = await res.json();
+      if (data.success && data.config) {
+        return data.config;
+      }
+    } catch (err) {
+      console.warn('Config fetch fallback:', err);
+    }
+    return {
+      eventTitle: 'BLIND CODING',
+      quizDurationMinutes: 60,
+      totalQuestions: 25,
+      quizAvailability: 'ACTIVE',
+      maxActivityWarnings: 3,
+      fullscreenRequired: true,
+      tabSwitchMonitoring: true,
+    };
   },
 
   // ================= ADMIN APIS =================
@@ -148,6 +195,14 @@ export const api = {
     return await res.json();
   },
 
+  // Admin Quiz Activity Monitor
+  async getAdminActivity(token) {
+    const res = await fetch(`${API_BASE_URL}/admin/activity`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  },
+
   // Admin Leaderboard
   async getAdminLeaderboard(token) {
     const res = await fetch(`${API_BASE_URL}/admin/leaderboard`, {
@@ -173,6 +228,27 @@ export const api = {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(questionData),
+    });
+    return await res.json();
+  },
+
+  // Admin Settings (GET)
+  async getAdminSettings(token) {
+    const res = await fetch(`${API_BASE_URL}/admin/settings`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  },
+
+  // Admin Settings (PUT)
+  async updateAdminSettings(token, settingsPayload) {
+    const res = await fetch(`${API_BASE_URL}/admin/settings`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(settingsPayload),
     });
     return await res.json();
   },

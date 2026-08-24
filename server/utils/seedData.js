@@ -575,6 +575,25 @@ export const seedDatabase = async () => {
       totalQuestions: 25,
       percentage: st.percentage,
       status: st.status,
+      tabSwitchCount: st.status === 'COMPLETED' ? (Math.random() > 0.5 ? 1 : 0) : 0,
+      fullscreenExitCount: 0,
+      totalWarnings: st.status === 'COMPLETED' ? (Math.random() > 0.5 ? 1 : 0) : 0,
+      activityLogs: [
+        {
+          type: 'QUIZ_STARTED',
+          timestamp: st.startedAt || new Date(Date.now() - 3600 * 1000).toISOString(),
+          details: 'Quiz session initiated',
+        },
+        ...(st.status === 'COMPLETED'
+          ? [
+              {
+                type: 'QUIZ_SUBMITTED',
+                timestamp: st.submittedAt || new Date().toISOString(),
+                details: 'Assessment finalized and submitted',
+              },
+            ]
+          : []),
+      ],
     });
   });
 

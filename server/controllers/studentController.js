@@ -95,6 +95,10 @@ export const registerStudent = async (req, res) => {
       totalQuestions: 25,
       percentage: null,
       status: 'NOT_STARTED',
+      tabSwitchCount: 0,
+      fullscreenExitCount: 0,
+      totalWarnings: 0,
+      activityLogs: [],
     };
 
     memoryStore.students.set(regNoClean, studentRecord);

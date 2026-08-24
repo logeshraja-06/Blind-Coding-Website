@@ -11,7 +11,8 @@ import {
   Sparkles,
   ArrowLeft,
   Calendar,
-  Lock
+  Lock,
+  Maximize2
 } from 'lucide-react';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
@@ -21,11 +22,13 @@ import { Modal } from '../components/ui/Modal';
 import { FloatingCodeBg } from '../components/common/FloatingCodeBg';
 import { PageTransition } from '../components/layout/PageTransition';
 import { useQuiz } from '../context/QuizContext';
+import { useToast } from '../context/ToastContext';
 import { TechForceLogo } from '../assets/logo/TechForceLogo';
 
 export const Welcome = () => {
   const navigate = useNavigate();
-  const { participant, startQuiz } = useQuiz();
+  const { participant, startQuiz, eventConfig } = useQuiz();
+  const { addToast } = useToast();
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
 
@@ -37,17 +40,36 @@ export const Welcome = () => {
 
   const handleStartConfirmed = async () => {
     setIsStarting(true);
+
+    // Request Fullscreen directly inside the trusted user-gesture click handler
+    try {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        await docEl.requestFullscreen().catch((err) => {
+          console.warn('Fullscreen request rejected or unsupported:', err);
+        });
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen();
+      }
+    } catch (e) {
+      console.warn('Fullscreen API error:', e);
+    }
+
     try {
       await startQuiz();
       setConfirmModalOpen(false);
       navigate('/quiz');
     } catch (err) {
-      console.error(err);
+      addToast(err.message || 'Unable to start quiz.', 'error', 4500);
       setIsStarting(false);
     }
   };
 
   const studentName = participant?.name || 'Candidate';
+  const durationMins = eventConfig?.quizDurationMinutes || 60;
+  const totalQ = eventConfig?.totalQuestions || 25;
 
   return (
     <PageTransition>
@@ -59,7 +81,7 @@ export const Welcome = () => {
         <div className="max-w-3xl w-full mx-auto relative z-10">
           <Link
             to="/register"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-drabDark/70 hover:text-celticBlue mb-6 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-drabDark/70 hover:text-celticBlue mb-6 transition-colors font-poppins"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Edit Registration Details</span>
@@ -79,7 +101,7 @@ export const Welcome = () => {
               Welcome, {studentName}! 👋
             </h1>
 
-            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold uppercase tracking-wider text-celticBlue mb-8">
+            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold uppercase tracking-wider text-celticBlue mb-8 font-poppins">
               <span>BLIND CODING</span>
               <span>•</span>
               <span>CSE ASSOCIATION & CSI</span>
@@ -91,8 +113,8 @@ export const Welcome = () => {
                 <div className="w-10 h-10 rounded-xl bg-celticBlue-100 text-celticBlue flex items-center justify-center mb-2">
                   <Terminal className="w-5 h-5" />
                 </div>
-                <span className="text-2xl font-bold font-comfortaa text-drabDark">25</span>
-                <span className="text-xs font-semibold uppercase tracking-wider text-drabDark/60">
+                <span className="text-2xl font-bold font-comfortaa text-drabDark">{totalQ}</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-drabDark/60 font-poppins">
                   QUESTIONS
                 </span>
               </div>
@@ -101,8 +123,8 @@ export const Welcome = () => {
                 <div className="w-10 h-10 rounded-xl bg-vanilla-200 text-drabDark flex items-center justify-center mb-2">
                   <Clock className="w-5 h-5 text-drabDark" />
                 </div>
-                <span className="text-2xl font-bold font-comfortaa text-celticBlue">60</span>
-                <span className="text-xs font-semibold uppercase tracking-wider text-drabDark/60">
+                <span className="text-2xl font-bold font-comfortaa text-celticBlue">{durationMins}</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-drabDark/60 font-poppins">
                   MINUTES
                 </span>
               </div>
@@ -112,22 +134,26 @@ export const Welcome = () => {
                   <Lock className="w-5 h-5 text-drabDark" />
                 </div>
                 <span className="text-2xl font-bold font-comfortaa text-teaGreen-600">ONE</span>
-                <span className="text-xs font-semibold uppercase tracking-wider text-drabDark/60">
+                <span className="text-xs font-semibold uppercase tracking-wider text-drabDark/60 font-poppins">
                   ATTEMPT
                 </span>
               </div>
             </div>
 
-            {/* Checklist Box */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-vanilla-100/70 border border-vanilla-300 text-left max-w-xl mx-auto mb-8">
+            {/* Critical Assessment Rules Box */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-vanilla-100/70 border border-vanilla-300 text-left max-w-xl mx-auto mb-8 font-poppins">
               <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-drabDark mb-2">
                 <AlertTriangle className="w-4 h-4 text-drabDark" />
-                <span>Critical Assessment Rules</span>
+                <span>Quiz Activity & Assessment Rules</span>
               </div>
               <ul className="space-y-1.5 text-xs text-drabDark/80">
                 <li className="flex items-start gap-2">
                   <span className="text-celticBlue font-bold">•</span>
-                  <span>Once you start, your 60-minute countdown runs continuously on the server.</span>
+                  <span>The quiz launches in <strong>Fullscreen Mode</strong>. Exiting fullscreen or switching tabs is monitored.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-celticBlue font-bold">•</span>
+                  <span>Once confirmed, your {durationMins}-minute server countdown runs continuously.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-celticBlue font-bold">•</span>
@@ -145,7 +171,7 @@ export const Welcome = () => {
                 variant="primary"
                 size="lg"
                 onClick={() => setConfirmModalOpen(true)}
-                className="w-full sm:w-auto px-10 py-4 font-bold text-base shadow-premium"
+                className="w-full sm:w-auto px-10 py-4 font-bold text-base shadow-premium font-poppins"
                 icon={ArrowRight}
                 iconPosition="right"
               >
@@ -155,19 +181,19 @@ export const Welcome = () => {
           </Card>
         </div>
 
-        {/* Confirmation Modal */}
+        {/* Start Confirmation Modal with Fullscreen Notice */}
         <Modal
           isOpen={confirmModalOpen}
           onClose={() => setConfirmModalOpen(false)}
           title="Begin Assessment Challenge"
-          subtitle="Confirm to initiate your 60-minute official attempt"
+          subtitle="Confirm to initiate your official timed attempt"
           maxWidth="max-w-md"
         >
-          <div className="space-y-4">
+          <div className="space-y-4 font-poppins">
             <div className="p-4 rounded-2xl bg-vanilla-50 border border-vanilla-300 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-drabDark flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-drabDark leading-relaxed">
-                Your <strong>60-minute challenge</strong> will begin immediately after confirmation and cannot be paused.
+              <Maximize2 className="w-5 h-5 text-celticBlue flex-shrink-0 mt-0.5" />
+              <p className="text-xs sm:text-sm text-drabDark leading-relaxed">
+                Your quiz will begin in <strong>fullscreen mode</strong>. Leaving fullscreen or switching tabs may be recorded as quiz activity.
               </p>
             </div>
 
@@ -191,7 +217,7 @@ export const Welcome = () => {
                 icon={ArrowRight}
                 iconPosition="right"
               >
-                START NOW
+                START CHALLENGE
               </Button>
             </div>
           </div>

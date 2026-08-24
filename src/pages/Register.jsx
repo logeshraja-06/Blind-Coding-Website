@@ -118,7 +118,7 @@ export const Register = () => {
         <div className="max-w-xl w-full mx-auto relative z-10">
           <Link
             to="/"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-drabDark/70 hover:text-celticBlue mb-6 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-drabDark/70 hover:text-celticBlue mb-6 transition-colors font-poppins"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Event Overview</span>
@@ -126,14 +126,14 @@ export const Register = () => {
 
           <Card variant="default" className="p-8 sm:p-10 border-2 border-teaGreen-400 shadow-premium bg-white">
             <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teaGreen-100 text-drabDark text-xs font-semibold uppercase tracking-wider mb-3">
-                <Sparkles className="w-3.5 h-3.5 text-celticBlue" />
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teaGreen-100 border border-teaGreen-300 text-drabDark text-xs font-semibold uppercase tracking-wider mb-3">
+                <TechForceLogo className="w-4 h-4" showText={false} />
                 CSE Department Candidate Entry
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold font-comfortaa text-drabDark mb-2">
                 Ready to Enter?
               </h1>
-              <p className="text-xs sm:text-sm text-drabDark/70 max-w-sm mx-auto">
+              <p className="text-xs sm:text-sm text-drabDark/70 max-w-sm mx-auto font-poppins">
                 Register your details and begin your Blind Coding challenge.
               </p>
             </div>
@@ -152,7 +152,7 @@ export const Register = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Full Name */}
               <Input
-                label="Full Name"
+                label="Full Name *"
                 placeholder="e.g. S. Logesh Raja"
                 required
                 icon={User}
@@ -166,8 +166,8 @@ export const Register = () => {
 
               {/* Register Number (Compulsory) */}
               <Input
-                label="Register Number (Compulsory)"
-                placeholder="e.g. 953710"
+                label="Register Number *"
+                placeholder="Example: 953710"
                 required
                 icon={Hash}
                 value={formData.registerNumber}
@@ -176,12 +176,12 @@ export const Register = () => {
                   if (errors.registerNumber) setErrors({ ...errors, registerNumber: null });
                 }}
                 error={errors.registerNumber}
-                helperText="Enter your official numeric college roll / register number."
+                helperText="Enter your official numeric college roll / register number (e.g. 953710)."
               />
 
               {/* Department (Fixed to CSE) */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-drabDark/80 mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-drabDark/80 mb-1.5 font-poppins">
                   Department
                 </label>
                 <input
@@ -195,7 +195,7 @@ export const Register = () => {
               {/* Year & Section */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Select
-                  label="Academic Year"
+                  label="Academic Year *"
                   required
                   options={years}
                   value={formData.year}
@@ -204,7 +204,7 @@ export const Register = () => {
                 />
 
                 <Select
-                  label="Section"
+                  label="Section *"
                   required
                   options={sections}
                   value={formData.section}
@@ -215,7 +215,7 @@ export const Register = () => {
 
               {/* Class */}
               <Input
-                label="Class / Batch"
+                label="Class / Batch *"
                 placeholder="e.g. IV CSE A"
                 required
                 icon={Layers}
@@ -228,7 +228,7 @@ export const Register = () => {
               />
 
               <div className="pt-2">
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-ivory border border-teaGreen-300 text-xs text-drabDark/80">
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-ivory border border-teaGreen-300 text-xs text-drabDark/80 font-poppins">
                   <Shield className="w-4 h-4 text-celticBlue flex-shrink-0" />
                   <span>Single official attempt per Register Number. All scores are confidential.</span>
                 </div>
@@ -240,7 +240,7 @@ export const Register = () => {
                   variant="primary"
                   size="lg"
                   isLoading={isSubmitting}
-                  className="w-full font-bold shadow-premium"
+                  className="w-full font-bold shadow-premium font-poppins"
                   icon={ArrowRight}
                   iconPosition="right"
                 >

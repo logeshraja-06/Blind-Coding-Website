@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Clock, AlertTriangle, Code2 } from 'lucide-react';
+import { Clock, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { TechForceLogo } from '../../assets/logo/TechForceLogo';
 
 export const QuizHeader = ({
   currentIndex,
@@ -20,23 +21,19 @@ export const QuizHeader = ({
   const isWarning = remainingSeconds < 300 && remainingSeconds >= 60; // < 5 mins
   const isCritical = remainingSeconds < 60; // < 1 min
 
-  const progressPercent = Math.round(((currentIndex + 1) / totalQuestions) * 100);
-
   return (
     <header className="sticky top-0 z-30 bg-ivory/95 backdrop-blur-md border-b border-teaGreen-300 shadow-sm py-3 px-4 sm:px-8">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* Left Brand / Event */}
+        {/* Left Brand: TECH FORCE Logo + BLIND CODING */}
         <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2 group focus-ring rounded-lg">
-            <div className="w-8 h-8 rounded-lg bg-celticBlue text-white flex items-center justify-center shadow-sm">
-              <Code2 className="w-4 h-4" />
-            </div>
+          <Link to="/" className="flex items-center gap-2.5 group focus-ring rounded-lg">
+            <TechForceLogo className="w-8 h-8" showText={false} />
             <div>
               <h1 className="text-sm font-bold font-comfortaa tracking-tight text-drabDark group-hover:text-celticBlue transition-colors">
-                BLIND<span className="text-celticBlue">CODE</span>
+                TECH FORCE • BLIND <span className="text-celticBlue">CODING</span>
               </h1>
               <span className="text-[10px] font-semibold tracking-wider text-drabDark/60 block -mt-0.5">
-                ROUND 01 • MCQ
+                CSE DEPT • 25 QUESTIONS
               </span>
             </div>
           </Link>

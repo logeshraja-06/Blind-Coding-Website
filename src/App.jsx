@@ -16,6 +16,7 @@ import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminParticipants } from './pages/admin/AdminParticipants';
+import { AdminActivity } from './pages/admin/AdminActivity';
 import { AdminResults } from './pages/admin/AdminResults';
 import { AdminQuestions } from './pages/admin/AdminQuestions';
 import { AdminExports } from './pages/admin/AdminExports';
@@ -42,6 +43,7 @@ function App() {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="participants" element={<AdminParticipants />} />
+                <Route path="activity" element={<AdminActivity />} />
                 <Route path="results" element={<AdminResults />} />
                 <Route path="leaderboard" element={<AdminResults />} />
                 <Route path="questions" element={<AdminQuestions />} />

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { QUIZ_QUESTIONS, QUIZ_DURATION_SECONDS, TOTAL_QUESTIONS } from '../data/questions';
 import { api } from '../services/api';
 import { useToast } from './ToastContext';
@@ -7,6 +7,17 @@ const QuizContext = createContext(null);
 
 export const QuizProvider = ({ children }) => {
   const { addToast } = useToast();
+
+  // Dynamic Event Configuration
+  const [eventConfig, setEventConfig] = useState({
+    eventTitle: 'BLIND CODING',
+    quizDurationMinutes: 60,
+    totalQuestions: TOTAL_QUESTIONS,
+    maxActivityWarnings: 3,
+    fullscreenRequired: true,
+    tabSwitchMonitoring: true,
+    quizAvailability: 'ACTIVE',
+  });
 
   // Participant state
   const [participant, setParticipant] = useState(() => {
@@ -23,6 +34,9 @@ export const QuizProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : {};
   });
 
+  // Answer saving status map: { [questionId]: 'idle' | 'saving' | 'saved' | 'error' }
+  const [saveStatusMap, setSaveStatusMap] = useState({});
+
   // Current active question index (0 to 24)
   const [currentIndex, setCurrentIndex] = useState(() => {
     const saved = localStorage.getItem('blindcode_current_q');
@@ -35,12 +49,23 @@ export const QuizProvider = ({ children }) => {
     return saved ? parseInt(saved, 10) : null;
   });
 
+  // Activity Warning Counts
+  const [activityWarnings, setActivityWarnings] = useState(() => {
+    const saved = localStorage.getItem('blindcode_activity_warnings');
+    return saved
+      ? JSON.parse(saved)
+      : { tabSwitchCount: 0, fullscreenExitCount: 0, totalWarnings: 0, maxWarnings: 3 };
+  });
+
+  // Duration in seconds (dynamic from config)
+  const durationSeconds = (eventConfig.quizDurationMinutes || 60) * 60;
+
   // Remaining time in seconds
   const [remainingSeconds, setRemainingSeconds] = useState(() => {
     const savedStart = localStorage.getItem('blindcode_started_at');
-    if (!savedStart) return QUIZ_DURATION_SECONDS;
+    if (!savedStart) return durationSeconds;
     const elapsed = Math.floor((Date.now() - parseInt(savedStart, 10)) / 1000);
-    return Math.max(0, QUIZ_DURATION_SECONDS - elapsed);
+    return Math.max(0, durationSeconds - elapsed);
   });
 
   // Quiz status: 'idle' | 'in_progress' | 'submitted'
@@ -58,19 +83,22 @@ export const QuizProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Load sanitized questions from backend on mount
+  // Fetch Public Event Config & Questions on Mount
   useEffect(() => {
-    const loadQuestions = async () => {
+    const loadConfigAndQuestions = async () => {
       try {
-        const list = await api.getQuestions();
+        const [config, list] = await Promise.all([api.getQuizConfig(), api.getQuestions()]);
+        if (config) {
+          setEventConfig((prev) => ({ ...prev, ...config }));
+        }
         if (list && list.length > 0) {
           setQuestions(list);
         }
       } catch (err) {
-        console.warn('Using local question bank');
+        console.warn('Using local fallback question bank and configuration');
       }
     };
-    loadQuestions();
+    loadConfigAndQuestions();
   }, []);
 
   // Save student registration
@@ -84,7 +112,6 @@ export const QuizProvider = ({ children }) => {
       section: details.section.trim(),
     };
 
-    // Call Backend API
     const response = await api.registerStudent(studentObj);
     if (!response.success && response.status === 'COMPLETED') {
       throw new Error(response.message || 'You have already completed the Blind Coding challenge.');
@@ -104,47 +131,178 @@ export const QuizProvider = ({ children }) => {
         setStartedAt(startMs);
         localStorage.setItem('blindcode_started_at', startMs.toString());
       }
+      if (response.attempt.totalWarnings !== undefined) {
+        const warnings = {
+          tabSwitchCount: response.attempt.tabSwitchCount || 0,
+          fullscreenExitCount: response.attempt.fullscreenExitCount || 0,
+          totalWarnings: response.attempt.totalWarnings || 0,
+          maxWarnings: eventConfig.maxActivityWarnings || 3,
+        };
+        setActivityWarnings(warnings);
+        localStorage.setItem('blindcode_activity_warnings', JSON.stringify(warnings));
+      }
     }
 
     return response;
-  }, []);
+  }, [eventConfig.maxActivityWarnings]);
 
-  // Start Quiz
+  // Start Quiz (Server timestamp + warning restore)
   const startQuiz = useCallback(async () => {
-    const now = Date.now();
-    setStartedAt(now);
+    const regNo = participant?.registerNumber;
+    let serverRes = null;
+
+    if (regNo) {
+      serverRes = await api.startQuiz(regNo);
+      if (serverRes && !serverRes.success) {
+        throw new Error(serverRes.message || 'Unable to start quiz.');
+      }
+    }
+
+    const startMs = serverRes?.startedAt ? new Date(serverRes.startedAt).getTime() : Date.now();
+    const remaining = serverRes?.remainingSeconds !== undefined ? serverRes.remainingSeconds : durationSeconds;
+    const maxWarn = serverRes?.maxWarnings || eventConfig.maxActivityWarnings || 3;
+
+    setStartedAt(startMs);
     setQuizStatus('in_progress');
-    setRemainingSeconds(QUIZ_DURATION_SECONDS);
+    setRemainingSeconds(remaining);
     setCurrentIndex(0);
-    localStorage.setItem('blindcode_started_at', now.toString());
+
+    const initialWarnings = {
+      tabSwitchCount: serverRes?.tabSwitchCount || 0,
+      fullscreenExitCount: serverRes?.fullscreenExitCount || 0,
+      totalWarnings: serverRes?.totalWarnings || 0,
+      maxWarnings: maxWarn,
+    };
+    setActivityWarnings(initialWarnings);
+
+    localStorage.setItem('blindcode_started_at', startMs.toString());
+    localStorage.setItem('blindcode_activity_warnings', JSON.stringify(initialWarnings));
     localStorage.removeItem('blindcode_result');
     localStorage.setItem('blindcode_current_q', '0');
 
-    // Notify backend
-    if (participant?.registerNumber) {
-      await api.startQuiz(participant.registerNumber);
+    if (serverRes?.savedAnswers) {
+      setAnswers(serverRes.savedAnswers);
+      localStorage.setItem('blindcode_answers', JSON.stringify(serverRes.savedAnswers));
+    }
+  }, [participant, durationSeconds, eventConfig.maxActivityWarnings]);
+
+  // Submit assessment (Unified submission path)
+  const submitQuiz = useCallback(async (isAutoSubmit = false) => {
+    const regNo = participant?.registerNumber;
+    let backendResult = null;
+
+    if (regNo) {
+      const response = await api.submitQuiz(regNo, isAutoSubmit);
+      if (response.success && response.result) {
+        backendResult = response.result;
+      }
     }
 
-    addToast('Quiz started! 60 minutes countdown begins.', 'info', 4000);
-  }, [participant, addToast]);
+    // Client fallback if server is offline
+    if (!backendResult) {
+      const currentStart = startedAt || parseInt(localStorage.getItem('blindcode_started_at') || `${Date.now()}`, 10);
+      const elapsedSeconds = Math.min(durationSeconds, Math.floor((Date.now() - currentStart) / 1000));
+      const mins = Math.floor(elapsedSeconds / 60);
+      const secs = elapsedSeconds % 60;
+      const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-  // Select an option for a question
-  const selectAnswer = useCallback((questionId, optionId) => {
+      let correct = 0;
+      questions.forEach((q) => {
+        if (answers[q.id || q.questionId] === q.correctAnswer) correct++;
+      });
+      const totalQ = eventConfig.totalQuestions || TOTAL_QUESTIONS;
+      const percentage = Math.round((correct / totalQ) * 100);
+      let performanceTier = 'KEEP LEARNING';
+      if (percentage >= 90) performanceTier = 'EXCELLENT PERFORMANCE';
+      else if (percentage >= 70) performanceTier = 'GREAT WORK';
+      else if (percentage >= 50) performanceTier = 'GOOD ATTEMPT';
+
+      backendResult = {
+        studentName: participant?.name || 'Participant',
+        registerNumber: participant?.registerNumber || '953710',
+        score: correct,
+        total: totalQ,
+        percentage,
+        performanceTier,
+        timeFormatted,
+        submittedAt: new Date().toISOString(),
+      };
+    }
+
+    setQuizResult(backendResult);
+    setQuizStatus('submitted');
+    localStorage.setItem('blindcode_result', JSON.stringify(backendResult));
+    localStorage.removeItem('blindcode_started_at');
+
+    if (isAutoSubmit) {
+      addToast('Assessment submitted automatically.', 'warning', 5000);
+    } else {
+      addToast('Challenge submitted successfully!', 'success', 4000);
+    }
+
+    return backendResult;
+  }, [participant, startedAt, durationSeconds, questions, answers, eventConfig.totalQuestions, addToast]);
+
+  // Record Activity Event (Tab Switch / Fullscreen Exit)
+  const recordActivity = useCallback(async (activityType) => {
+    const regNo = participant?.registerNumber;
+    if (!regNo || quizStatus !== 'in_progress') return null;
+
+    try {
+      const res = await api.logActivity(regNo, activityType);
+      if (res && res.success) {
+        const updated = {
+          tabSwitchCount: res.tabSwitchCount,
+          fullscreenExitCount: res.fullscreenExitCount,
+          totalWarnings: res.totalWarnings,
+          maxWarnings: res.maxWarnings || eventConfig.maxActivityWarnings || 3,
+        };
+        setActivityWarnings(updated);
+        localStorage.setItem('blindcode_activity_warnings', JSON.stringify(updated));
+
+        return { ...res, updatedWarnings: updated };
+      }
+    } catch (err) {
+      console.warn('Error recording activity:', err);
+    }
+    return null;
+  }, [participant, quizStatus, eventConfig.maxActivityWarnings]);
+
+  // Select Option with Subtle Inline Save & Single Auto-Retry
+  const selectAnswer = useCallback(async (questionId, optionId) => {
     setAnswers((prev) => {
       const updated = { ...prev, [questionId]: optionId };
       localStorage.setItem('blindcode_answers', JSON.stringify(updated));
       return updated;
     });
 
-    // Auto-save to backend
-    if (participant?.registerNumber) {
-      api.saveAnswer(participant.registerNumber, questionId, optionId);
+    setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'saving' }));
+
+    const regNo = participant?.registerNumber;
+    if (regNo) {
+      let saveRes = await api.saveAnswer(regNo, questionId, optionId);
+
+      // Single automatic retry on failure
+      if (!saveRes || !saveRes.success) {
+        setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'retrying' }));
+        await new Promise((r) => setTimeout(r, 600));
+        saveRes = await api.saveAnswer(regNo, questionId, optionId);
+      }
+
+      if (saveRes && saveRes.success) {
+        setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'saved' }));
+        setTimeout(() => {
+          setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'idle' }));
+        }, 1200);
+      } else {
+        setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'error' }));
+      }
+    } else {
+      setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'saved' }));
     }
+  }, [participant]);
 
-    addToast('Answer saved ✓', 'success', 1500);
-  }, [participant, addToast]);
-
-  // Clear answer for current question
+  // Clear answer
   const clearAnswer = useCallback((questionId) => {
     setAnswers((prev) => {
       const updated = { ...prev };
@@ -158,7 +316,7 @@ export const QuizProvider = ({ children }) => {
     }
   }, [participant]);
 
-  // Navigate to specific question index
+  // Navigation helpers
   const goToQuestion = useCallback((index) => {
     if (index >= 0 && index < questions.length) {
       setCurrentIndex(index);
@@ -178,70 +336,13 @@ export const QuizProvider = ({ children }) => {
     }
   }, [currentIndex, goToQuestion]);
 
-  // Submit assessment (Backend computes score)
-  const submitQuiz = useCallback(async (isAutoSubmit = false) => {
-    const regNo = participant?.registerNumber;
-    let backendResult = null;
-
-    if (regNo) {
-      const response = await api.submitQuiz(regNo, isAutoSubmit);
-      if (response.success && response.result) {
-        backendResult = response.result;
-      }
-    }
-
-    // Client computation fallback if offline
-    if (!backendResult) {
-      const currentStart = startedAt || parseInt(localStorage.getItem('blindcode_started_at') || `${Date.now()}`, 10);
-      const elapsedSeconds = Math.min(QUIZ_DURATION_SECONDS, Math.floor((Date.now() - currentStart) / 1000));
-      const mins = Math.floor(elapsedSeconds / 60);
-      const secs = elapsedSeconds % 60;
-      const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-      // Calculate approximate score
-      let correct = 0;
-      questions.forEach((q) => {
-        if (answers[q.id || q.questionId] === q.correctAnswer) correct++;
-      });
-      const percentage = Math.round((correct / TOTAL_QUESTIONS) * 100);
-      let performanceTier = 'KEEP LEARNING';
-      if (percentage >= 90) performanceTier = 'EXCELLENT PERFORMANCE';
-      else if (percentage >= 70) performanceTier = 'GREAT WORK';
-      else if (percentage >= 50) performanceTier = 'GOOD ATTEMPT';
-
-      backendResult = {
-        studentName: participant?.name || 'Participant',
-        registerNumber: participant?.registerNumber || '953710',
-        score: correct,
-        total: TOTAL_QUESTIONS,
-        percentage,
-        performanceTier,
-        timeFormatted,
-        submittedAt: new Date().toISOString(),
-      };
-    }
-
-    setQuizResult(backendResult);
-    setQuizStatus('submitted');
-    localStorage.setItem('blindcode_result', JSON.stringify(backendResult));
-    localStorage.removeItem('blindcode_started_at');
-
-    if (isAutoSubmit) {
-      addToast('Time is up! Your challenge has been submitted automatically.', 'warning', 6000);
-    } else {
-      addToast('Challenge submitted successfully!', 'success', 4000);
-    }
-
-    return backendResult;
-  }, [answers, startedAt, questions, participant, addToast]);
-
   // Active Timer Loop
   useEffect(() => {
     if (quizStatus !== 'in_progress' || !startedAt) return;
 
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      const left = QUIZ_DURATION_SECONDS - elapsed;
+      const left = durationSeconds - elapsed;
 
       if (left <= 0) {
         setRemainingSeconds(0);
@@ -260,40 +361,46 @@ export const QuizProvider = ({ children }) => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [quizStatus, startedAt, submitQuiz, addToast]);
+  }, [quizStatus, startedAt, durationSeconds, submitQuiz, addToast]);
 
-  // Reset demo
+  // Reset demo state
   const resetQuizState = useCallback(() => {
     localStorage.removeItem('blindcode_started_at');
     localStorage.removeItem('blindcode_answers');
     localStorage.removeItem('blindcode_result');
     localStorage.removeItem('blindcode_current_q');
+    localStorage.removeItem('blindcode_activity_warnings');
     setAnswers({});
     setCurrentIndex(0);
     setStartedAt(null);
-    setRemainingSeconds(QUIZ_DURATION_SECONDS);
+    setRemainingSeconds(durationSeconds);
     setQuizStatus('idle');
     setQuizResult(null);
-  }, []);
+    setActivityWarnings({ tabSwitchCount: 0, fullscreenExitCount: 0, totalWarnings: 0, maxWarnings: 3 });
+  }, [durationSeconds]);
 
   const answeredCount = Object.keys(answers).length;
-  const unansweredCount = TOTAL_QUESTIONS - answeredCount;
+  const totalQ = eventConfig.totalQuestions || questions.length || TOTAL_QUESTIONS;
+  const unansweredCount = Math.max(0, totalQ - answeredCount);
 
   return (
     <QuizContext.Provider
       value={{
+        eventConfig,
         participant,
         questions,
         answers,
+        saveStatusMap,
         currentIndex,
         currentQuestion: questions[currentIndex] || questions[0],
         startedAt,
         remainingSeconds,
         quizStatus,
         quizResult,
+        activityWarnings,
         answeredCount,
         unansweredCount,
-        totalQuestions: TOTAL_QUESTIONS,
+        totalQuestions: totalQ,
         registerStudent,
         startQuiz,
         selectAnswer,
@@ -302,6 +409,7 @@ export const QuizProvider = ({ children }) => {
         nextQuestion,
         prevQuestion,
         submitQuiz,
+        recordActivity,
         resetQuizState,
       }}
     >

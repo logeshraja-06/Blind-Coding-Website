@@ -25,10 +25,8 @@ export const Navbar = () => {
 
   const navLinks = [
     { name: 'Home', path: '/' },
-    { name: 'About', path: '/#about' },
     { name: 'Rules', path: '/#rules' },
     { name: 'Event Details', path: '/#details' },
-    { name: 'FAQ', path: '/#faq' },
   ];
 
   const handleNavClick = (path) => {
@@ -75,7 +73,7 @@ export const Navbar = () => {
             <button
               key={link.name}
               onClick={() => handleNavClick(link.path)}
-              className="px-3.5 py-1.5 text-xs font-semibold text-drabDark/80 hover:text-celticBlue rounded-full hover:bg-teaGreen-100/60 transition-colors cursor-pointer"
+              className="px-3.5 py-1.5 text-xs font-semibold text-drabDark/80 hover:text-celticBlue rounded-full hover:bg-teaGreen-100/60 transition-colors cursor-pointer font-poppins"
             >
               {link.name}
             </button>
@@ -86,7 +84,7 @@ export const Navbar = () => {
         <div className="hidden sm:flex items-center gap-3">
           <Link
             to="/admin"
-            className="text-xs font-semibold text-drabDark/70 hover:text-celticBlue px-3 py-2 rounded-xl hover:bg-teaGreen-100/50 transition-colors flex items-center gap-1.5"
+            className="text-xs font-semibold text-drabDark/70 hover:text-celticBlue px-3 py-2 rounded-xl hover:bg-teaGreen-100/50 transition-colors flex items-center gap-1.5 font-poppins"
           >
             <ShieldCheck className="w-4 h-4 text-celticBlue" />
             <span>Admin</span>
@@ -95,7 +93,7 @@ export const Navbar = () => {
             size="sm"
             variant="primary"
             onClick={() => navigate('/register')}
-            className="font-bold shadow-sm px-5"
+            className="font-bold shadow-sm px-5 font-poppins"
             icon={ArrowRight}
             iconPosition="right"
           >
@@ -109,7 +107,7 @@ export const Navbar = () => {
             size="sm"
             variant="primary"
             onClick={() => navigate('/register')}
-            className="text-xs px-3 py-1.5"
+            className="text-xs px-3 py-1.5 font-poppins"
           >
             REGISTER
           </Button>
@@ -140,7 +138,7 @@ export const Navbar = () => {
                     handleNavClick(link.path);
                     setMobileMenuOpen(false);
                   }}
-                  className="text-left px-4 py-2.5 rounded-xl font-medium text-drabDark hover:bg-teaGreen-100 hover:text-celticBlue transition-colors"
+                  className="text-left px-4 py-2.5 rounded-xl font-medium text-drabDark hover:bg-teaGreen-100 hover:text-celticBlue transition-colors font-poppins"
                 >
                   {link.name}
                 </button>
@@ -148,7 +146,7 @@ export const Navbar = () => {
               <div className="pt-3 border-t border-teaGreen-200 flex flex-col gap-2">
                 <Button
                   variant="primary"
-                  className="w-full justify-center font-bold"
+                  className="w-full justify-center font-bold font-poppins"
                   onClick={() => {
                     navigate('/register');
                     setMobileMenuOpen(false);
@@ -161,7 +159,7 @@ export const Navbar = () => {
                 <Link
                   to="/admin"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-center py-2 text-xs font-semibold text-celticBlue hover:underline flex items-center justify-center gap-1.5"
+                  className="text-center py-2 text-xs font-semibold text-celticBlue hover:underline flex items-center justify-center gap-1.5 font-poppins"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   <span>Admin Panel</span>

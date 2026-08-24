@@ -16,6 +16,7 @@ export const AdminLayout = () => {
   const getPageTitle = () => {
     if (location.pathname === '/admin' || location.pathname === '/admin/') return 'Event Overview';
     if (location.pathname.includes('/participants')) return 'Participants Management';
+    if (location.pathname.includes('/activity')) return 'Quiz Activity Monitoring';
     if (location.pathname.includes('/results') || location.pathname.includes('/leaderboard')) return 'Admin Official Leaderboard';
     if (location.pathname.includes('/questions')) return 'Questions Bank';
     if (location.pathname.includes('/exports')) return 'Reports & Data Export';

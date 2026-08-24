@@ -7,17 +7,19 @@ import {
   HelpCircle,
   Download,
   Settings,
-  Code2,
   ExternalLink,
   ChevronRight,
   ShieldCheck,
+  ShieldAlert,
   Award
 } from 'lucide-react';
+import { TechForceLogo } from '../../assets/logo/TechForceLogo';
 
 export const AdminSidebar = ({ mobileOpen, setMobileOpen }) => {
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard, exact: true },
     { name: 'Participants', path: '/admin/participants', icon: Users },
+    { name: 'Quiz Activity', path: '/admin/activity', icon: ShieldAlert },
     { name: 'Results & Ranks', path: '/admin/results', icon: Trophy },
     { name: 'Questions Bank', path: '/admin/questions', icon: HelpCircle },
     { name: 'Reports & Export', path: '/admin/exports', icon: Download },
@@ -25,18 +27,16 @@ export const AdminSidebar = ({ mobileOpen, setMobileOpen }) => {
   ];
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-drabDark text-ivory/80 border-r border-drabDark-700">
+    <div className="flex flex-col h-full bg-drabDark text-ivory/80 border-r border-drabDark-700 font-poppins">
       {/* Brand Header */}
       <div className="p-6 border-b border-drabDark-700">
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-celticBlue text-white flex items-center justify-center shadow-md">
-            <Code2 className="w-5 h-5" />
-          </div>
+        <Link to="/" className="flex items-center gap-3 group">
+          <TechForceLogo className="w-10 h-10" showText={false} />
           <div>
             <span className="font-comfortaa font-bold text-lg text-ivory block leading-tight">
               BLIND<span className="text-teaGreen">CODE</span>
             </span>
-            <span className="text-[10px] font-semibold text-teaGreen uppercase tracking-widest block">
+            <span className="text-[10px] font-semibold text-teaGreen uppercase tracking-widest block mt-0.5 font-poppins">
               ADMIN CONSOLE
             </span>
           </div>
@@ -78,12 +78,12 @@ export const AdminSidebar = ({ mobileOpen, setMobileOpen }) => {
       <div className="p-4 border-t border-drabDark-700 bg-drabDark-800">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-teaGreen-300 text-drabDark font-bold flex items-center justify-center text-xs">
+            <div className="w-8 h-8 rounded-full bg-teaGreen-300 text-drabDark font-bold flex items-center justify-center text-xs font-comfortaa">
               AD
             </div>
             <div>
               <div className="text-xs font-bold text-ivory leading-tight">Event Convenor</div>
-              <div className="text-[10px] text-ivory/50">Tech Fest Admin</div>
+              <div className="text-[10px] text-ivory/50">TECH FORCE Admin</div>
             </div>
           </div>
           <span className="w-2 h-2 rounded-full bg-teaGreen" title="System Live" />

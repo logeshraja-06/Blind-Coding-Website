@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OptionItem } from './OptionItem';
 import { Badge } from '../ui/Badge';
-import { Terminal, Code, Sparkles, HelpCircle } from 'lucide-react';
+import { Terminal, Check, Loader2, AlertCircle } from 'lucide-react';
 
 export const QuestionCard = ({
   question,
@@ -10,6 +10,8 @@ export const QuestionCard = ({
   totalQuestions,
   selectedOption,
   onSelectOption,
+  saveStatus = 'idle', // 'idle' | 'saving' | 'retrying' | 'saved' | 'error'
+  disabled = false,
 }) => {
   if (!question) return null;
 
@@ -21,7 +23,9 @@ export const QuestionCard = ({
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
-        className="w-full bg-white rounded-3xl p-6 sm:p-8 border border-teaGreen-300 shadow-premium"
+        className={`w-full bg-white rounded-3xl p-6 sm:p-8 border border-teaGreen-300 shadow-premium transition-opacity ${
+          disabled ? 'opacity-60 pointer-events-none' : ''
+        }`}
       >
         {/* Question Header & Category */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-teaGreen-200/60">
@@ -29,9 +33,31 @@ export const QuestionCard = ({
             <span className="text-xs font-bold font-comfortaa uppercase tracking-wider text-celticBlue bg-celticBlue-50 px-3 py-1 rounded-full border border-celticBlue-200">
               Question {String(currentIndex + 1).padStart(2, '0')}
             </span>
-            <span className="text-xs text-drabDark/60 font-medium">
+            <span className="text-xs text-drabDark/60 font-medium font-poppins">
               Single Choice MCQ
             </span>
+
+            {/* Subtle Inline Save Indicator (No Toast Spam) */}
+            {saveStatus === 'saving' && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-drabDark/60 font-poppins animate-pulse">
+                <Loader2 className="w-3 h-3 animate-spin text-celticBlue" /> Saving...
+              </span>
+            )}
+            {saveStatus === 'retrying' && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-vanilla-600 font-poppins font-medium">
+                <Loader2 className="w-3 h-3 animate-spin" /> Retrying save...
+              </span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-teaGreen-600 font-poppins font-semibold">
+                <Check className="w-3.5 h-3.5 text-teaGreen-600 stroke-[3]" /> Saved
+              </span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-red-600 font-poppins font-medium">
+                <AlertCircle className="w-3 h-3" /> Save failed (will retry on submit)
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -95,7 +121,7 @@ export const QuestionCard = ({
               option={option}
               index={idx}
               isSelected={selectedOption === (option.id || ['A', 'B', 'C', 'D'][idx])}
-              onSelect={onSelectOption}
+              onSelect={disabled ? () => {} : onSelectOption}
             />
           ))}
         </div>

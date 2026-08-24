@@ -6,6 +6,20 @@ export const memoryStore = {
   questions: new Map(),
   quizAttempts: new Map(),
   admins: new Map(),
+  eventConfig: {
+    eventTitle: 'BLIND CODING',
+    quizDurationMinutes: 60,
+    totalQuestions: 25,
+    eventStartAt: null,
+    eventEndAt: null,
+    quizAvailability: 'ACTIVE', // 'ACTIVE' | 'INACTIVE'
+    maxActivityWarnings: 3,
+    autoSubmitOnWarningLimit: true,
+    fullscreenRequired: true,
+    tabSwitchMonitoring: true,
+    passingPercentage: 50,
+    allowAnswerChange: true,
+  },
 };
 
 export const connectDB = async () => {
