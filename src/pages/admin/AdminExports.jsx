@@ -5,10 +5,7 @@ import {
   FileSpreadsheet,
   FileCode2,
   CheckCircle2,
-  Sparkles,
   Info,
-  Calendar,
-  Layers
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -21,16 +18,15 @@ export const AdminExports = () => {
 
   const handleExport = (type) => {
     setDownloading(type);
-    setTimeout(() => {
+    if (type === 'pdf') {
+      window.open('http://localhost:5000/api/export/pdf', '_blank');
+      addToast('Generating official PDF merit report...', 'success', 3500);
       setDownloading(null);
-      if (type === 'pdf') {
-        addToast('PDF Report generated: BLINDCODE_2026_Results.pdf', 'success', 4000);
-      } else if (type === 'xlsx') {
-        addToast('Excel Sheet generated: BLINDCODE_Participant_Data.xlsx', 'success', 4000);
-      } else if (type === 'csv') {
-        addToast('CSV Data exported: BLINDCODE_Raw_Submissions.csv', 'success', 4000);
-      }
-    }, 1200);
+    } else if (type === 'xlsx' || type === 'csv') {
+      window.location.href = 'http://localhost:5000/api/export/xlsx';
+      addToast('Downloading official participant spreadsheet...', 'success', 3500);
+      setDownloading(null);
+    }
   };
 
   return (
@@ -40,7 +36,8 @@ export const AdminExports = () => {
         <Info className="w-4 h-4 text-celticBlue flex-shrink-0 mt-0.5" />
         <div>
           <strong className="text-celticBlue">Event Reporting Engine: </strong>
-          Generate consolidated participant reports, merit lists, and department breakdowns. The exported sheets include official timestamps, raw scores, and candidate verification details.
+          Generate and stream official merit documents for the <strong>Department of Computer Science and Engineering</strong>.
+          Reports include candidate ranks, verified timestamps, and complete submission logs.
         </div>
       </div>
 
@@ -58,7 +55,7 @@ export const AdminExports = () => {
                 <FileText className="w-6 h-6" />
               </div>
               <Badge variant="dark" size="sm">
-                Official PDF
+                Printable PDF
               </Badge>
             </div>
 
@@ -66,21 +63,21 @@ export const AdminExports = () => {
               PDF REPORT
             </h3>
             <p className="text-sm text-drabDark/70 leading-relaxed mb-6">
-              Export participant results as formatted PDF. Includes college branding, candidate ranks, score summaries, and signature placeholders.
+              Export verified participant merit results as a printable PDF. Includes official college headers, CSE Association branding, coordinator names, and ranked scores.
             </p>
 
             <ul className="space-y-2 text-xs text-drabDark/70 mb-8">
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teaGreen-600" />
-                <span>Executive Summary & Top Rankers</span>
+                <span>Executive Department Summary & Top Rankers</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teaGreen-600" />
-                <span>Department-wise Merit Classification</span>
+                <span>Student & Faculty Coordinator Signatures</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teaGreen-600" />
-                <span>Certificate Distribution Ready</span>
+                <span>Print & Certificate Ready</span>
               </li>
             </ul>
           </div>
@@ -94,7 +91,7 @@ export const AdminExports = () => {
             iconPosition="right"
             className="w-full font-bold"
           >
-            DOWNLOAD PDF
+            DOWNLOAD PDF REPORT
           </Button>
         </Card>
 
@@ -118,21 +115,21 @@ export const AdminExports = () => {
               EXCEL REPORT
             </h3>
             <p className="text-sm text-drabDark/70 leading-relaxed mb-6">
-              Export complete participant data. Contains all candidate records, register numbers, timing logs, and raw per-question responses for data auditing.
+              Export complete candidate data. Contains all participant records, register numbers, scores, accuracy percentage, and timing metrics.
             </p>
 
             <ul className="space-y-2 text-xs text-drabDark/70 mb-8">
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teaGreen-600" />
-                <span>Full candidate roster (156 participants)</span>
+                <span>Full candidate roster with Register Numbers</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teaGreen-600" />
-                <span>Timing breakdown & question answers</span>
+                <span>Duration, score, and percentage columns</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teaGreen-600" />
-                <span>Formatted for Excel & Google Sheets</span>
+                <span>Compatible with Microsoft Excel & Google Sheets</span>
               </li>
             </ul>
           </div>
@@ -159,10 +156,10 @@ export const AdminExports = () => {
           </div>
           <div>
             <h4 className="font-comfortaa font-bold text-sm text-drabDark">
-              Raw Submissions CSV
+              Raw Submissions CSV Data
             </h4>
             <p className="text-xs text-drabDark/60">
-              Machine-readable plain text comma-separated values for custom analytics
+              Plain text comma-separated values for custom analytics and database imports
             </p>
           </div>
         </div>

@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
-import { Menu, Bell, Shield, Search, ExternalLink } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { Menu, ExternalLink, LogOut, ShieldCheck } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const AdminLayout = () => {
+  const { isAuthenticated, adminUser, logout } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace />;
+  }
 
   const getPageTitle = () => {
     if (location.pathname === '/admin' || location.pathname === '/admin/') return 'Event Overview';
     if (location.pathname.includes('/participants')) return 'Participants Management';
-    if (location.pathname.includes('/results')) return 'Results & Leaderboard';
+    if (location.pathname.includes('/results') || location.pathname.includes('/leaderboard')) return 'Admin Official Leaderboard';
     if (location.pathname.includes('/questions')) return 'Questions Bank';
     if (location.pathname.includes('/exports')) return 'Reports & Data Export';
     if (location.pathname.includes('/settings')) return 'Event Configuration';
@@ -43,7 +48,7 @@ export const AdminLayout = () => {
                 {getPageTitle()}
               </h1>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-drabDark/60 block -mt-0.5">
-                BLINDCODE 2026 Admin Portal
+                TECH FORCE • BLIND CODING 2026
               </span>
             </div>
           </div>
@@ -51,7 +56,7 @@ export const AdminLayout = () => {
           <div className="flex items-center gap-3">
             <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teaGreen-100 border border-teaGreen-300 text-drabDark text-xs font-semibold">
               <span className="w-2 h-2 rounded-full bg-teaGreen-600 animate-pulse" />
-              Live Assessment Session
+              Authenticated Session
             </span>
 
             <Link
@@ -61,6 +66,14 @@ export const AdminLayout = () => {
               <ExternalLink className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Student View</span>
             </Link>
+
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-xl text-drabDark/70 hover:text-red-600 hover:bg-red-50 transition-colors"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </header>
 

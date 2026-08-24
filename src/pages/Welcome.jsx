@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
   Clock,
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
   ShieldCheck,
-  Code2,
   Terminal,
   Layers,
   Sparkles,
-  ArrowLeft
+  ArrowLeft,
+  Calendar,
+  Lock
 } from 'lucide-react';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
@@ -21,26 +21,33 @@ import { Modal } from '../components/ui/Modal';
 import { FloatingCodeBg } from '../components/common/FloatingCodeBg';
 import { PageTransition } from '../components/layout/PageTransition';
 import { useQuiz } from '../context/QuizContext';
+import { TechForceLogo } from '../assets/logo/TechForceLogo';
 
 export const Welcome = () => {
   const navigate = useNavigate();
-  const { participant, startQuiz, quizStatus } = useQuiz();
+  const { participant, startQuiz } = useQuiz();
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
-  // If no participant details, redirect back to register
   useEffect(() => {
     if (!participant) {
       navigate('/register');
     }
   }, [participant, navigate]);
 
-  const handleStartConfirmed = () => {
-    setConfirmModalOpen(false);
-    startQuiz();
-    navigate('/quiz');
+  const handleStartConfirmed = async () => {
+    setIsStarting(true);
+    try {
+      await startQuiz();
+      setConfirmModalOpen(false);
+      navigate('/quiz');
+    } catch (err) {
+      console.error(err);
+      setIsStarting(false);
+    }
   };
 
-  const studentName = participant?.name || 'Participant';
+  const studentName = participant?.name || 'Candidate';
 
   return (
     <PageTransition>
@@ -50,33 +57,32 @@ export const Welcome = () => {
         <FloatingCodeBg opacity={0.5} />
 
         <div className="max-w-3xl w-full mx-auto relative z-10">
-          {/* Back button */}
           <Link
             to="/register"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-drabDark/70 hover:text-celticBlue mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Edit Participant Information</span>
+            <span>Edit Registration Details</span>
           </Link>
 
           <Card
             variant="default"
             className="p-8 sm:p-12 border-2 border-teaGreen-400 shadow-premium bg-white text-center relative overflow-hidden"
           >
-            {/* Student Greeting */}
+            {/* Header Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teaGreen-100 border border-teaGreen-300 text-xs font-bold uppercase tracking-wider text-drabDark mb-4">
-              <Sparkles className="w-3.5 h-3.5 text-celticBlue" />
-              Verified Participant • {participant?.department || 'Engineering'}
+              <TechForceLogo className="w-5 h-5" showText={false} />
+              Verified CSE Participant • Reg: {participant?.registerNumber || '953710'}
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold font-comfortaa text-drabDark mb-2">
               Welcome, {studentName}! 👋
             </h1>
 
-            <div className="flex items-center justify-center gap-2 text-sm font-semibold uppercase tracking-wider text-celticBlue mb-8">
+            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold uppercase tracking-wider text-celticBlue mb-8">
               <span>BLIND CODING</span>
               <span>•</span>
-              <span>QUIZ ROUND</span>
+              <span>CSE ASSOCIATION & CSI</span>
             </div>
 
             {/* Event Metrics Highlight */}
@@ -103,7 +109,7 @@ export const Welcome = () => {
 
               <div className="p-5 rounded-2xl bg-ivory border border-teaGreen-300 shadow-sm flex flex-col items-center">
                 <div className="w-10 h-10 rounded-xl bg-teaGreen-200 text-drabDark flex items-center justify-center mb-2">
-                  <ShieldCheck className="w-5 h-5 text-drabDark" />
+                  <Lock className="w-5 h-5 text-drabDark" />
                 </div>
                 <span className="text-2xl font-bold font-comfortaa text-teaGreen-600">ONE</span>
                 <span className="text-xs font-semibold uppercase tracking-wider text-drabDark/60">
@@ -112,29 +118,28 @@ export const Welcome = () => {
               </div>
             </div>
 
-            {/* Warning Checklist Card */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-vanilla-100/60 border border-vanilla-300 text-left max-w-xl mx-auto mb-8">
+            {/* Checklist Box */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-vanilla-100/70 border border-vanilla-300 text-left max-w-xl mx-auto mb-8">
               <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-drabDark mb-2">
                 <AlertTriangle className="w-4 h-4 text-drabDark" />
-                <span>Important Instructions</span>
+                <span>Critical Assessment Rules</span>
               </div>
               <ul className="space-y-1.5 text-xs text-drabDark/80">
                 <li className="flex items-start gap-2">
                   <span className="text-celticBlue font-bold">•</span>
-                  <span>Once you start, the 60-minute countdown runs continuously.</span>
+                  <span>Once you start, your 60-minute countdown runs continuously on the server.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-celticBlue font-bold">•</span>
-                  <span>Do not switch browser tabs or close your window to avoid state loss.</span>
+                  <span>Answers auto-save instantly as you choose your options.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-celticBlue font-bold">•</span>
-                  <span>All answers are saved automatically as you select them.</span>
+                  <span>Upon completion, your confidential final score will be calculated and revealed.</span>
                 </li>
               </ul>
             </div>
 
-            {/* Start Button */}
             <div className="flex justify-center">
               <Button
                 variant="primary"
@@ -144,7 +149,7 @@ export const Welcome = () => {
                 icon={ArrowRight}
                 iconPosition="right"
               >
-                START QUIZ
+                START CHALLENGE
               </Button>
             </div>
           </Card>
@@ -154,20 +159,20 @@ export const Welcome = () => {
         <Modal
           isOpen={confirmModalOpen}
           onClose={() => setConfirmModalOpen(false)}
-          title="Start Assessment"
-          subtitle="Please confirm before initiating your timed session"
+          title="Begin Assessment Challenge"
+          subtitle="Confirm to initiate your 60-minute official attempt"
           maxWidth="max-w-md"
         >
           <div className="space-y-4">
             <div className="p-4 rounded-2xl bg-vanilla-50 border border-vanilla-300 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-drabDark flex-shrink-0 mt-0.5" />
               <p className="text-sm text-drabDark leading-relaxed">
-                Once you start the quiz, your <strong>60-minute timer</strong> will begin immediately and cannot be paused or reset.
+                Your <strong>60-minute challenge</strong> will begin immediately after confirmation and cannot be paused.
               </p>
             </div>
 
             <p className="text-xs text-drabDark/70">
-              Ensure you have a stable network and a distraction-free environment.
+              Candidate: <strong>{studentName}</strong> ({participant?.registerNumber}) • Department of CSE
             </p>
 
             <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
@@ -181,6 +186,7 @@ export const Welcome = () => {
               <Button
                 variant="primary"
                 onClick={handleStartConfirmed}
+                isLoading={isStarting}
                 className="flex-1 justify-center font-bold"
                 icon={ArrowRight}
                 iconPosition="right"
