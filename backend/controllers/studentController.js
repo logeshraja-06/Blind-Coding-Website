@@ -95,6 +95,7 @@ export const registerStudent = async (req, res) => {
       totalQuestions: 25,
       percentage: null,
       status: 'NOT_STARTED',
+      assignedQuestions: [],
       tabSwitchCount: 0,
       fullscreenExitCount: 0,
       totalWarnings: 0,

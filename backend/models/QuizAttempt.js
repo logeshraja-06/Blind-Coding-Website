@@ -35,9 +35,22 @@ const quizAttemptSchema = new mongoose.Schema(
     },
     answers: {
       type: Map,
-      of: String, // { "1": "B", "2": "A", ... }
+      of: String, // { "1": "B", "2": "A", ... } where keys are questionIds and values are stable option IDs
       default: {},
     },
+    assignedQuestions: [
+      {
+        questionId: {
+          type: mongoose.Schema.Types.Mixed,
+          required: true,
+        },
+        optionOrder: [
+          {
+            type: String,
+          },
+        ],
+      },
+    ],
     startedAt: {
       type: Date,
       default: null,

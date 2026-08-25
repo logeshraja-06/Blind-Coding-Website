@@ -64,7 +64,7 @@ export const Quiz = () => {
   const lastFullscreenCheckRef = useRef(Date.now());
   const autoSubmitTimerRef = useRef(null);
 
-  const maxWarnings = activityWarnings?.maxWarnings || eventConfig?.maxActivityWarnings || 3;
+  const maxWarnings = activityWarnings?.maxWarnings || eventConfig?.maxActivityWarnings || 2;
 
   // If no participant or quiz is already submitted, redirect
   useEffect(() => {

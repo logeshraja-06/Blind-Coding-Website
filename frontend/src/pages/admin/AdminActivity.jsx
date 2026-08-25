@@ -31,7 +31,7 @@ export const AdminActivity = () => {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('ALL');
   const [selectedAttempt, setSelectedAttempt] = useState(null);
-  const [maxWarnings, setMaxWarnings] = useState(3);
+  const [maxWarnings, setMaxWarnings] = useState(2);
 
   const fetchActivityData = async () => {
     setLoading(true);
@@ -39,7 +39,7 @@ export const AdminActivity = () => {
       const res = await api.getAdminActivity(adminToken);
       if (res && res.success) {
         setAttempts(res.attempts || []);
-        setMaxWarnings(res.maxWarnings || 3);
+        setMaxWarnings(res.maxWarnings || 2);
       }
     } catch (err) {
       addToast('Failed to load activity logs.', 'error', 3500);

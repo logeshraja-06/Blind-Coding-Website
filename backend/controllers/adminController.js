@@ -185,8 +185,8 @@ export const getAdminActivity = async (req, res) => {
         tabSwitchCount: a.tabSwitchCount || 0,
         fullscreenExitCount: a.fullscreenExitCount || 0,
         totalWarnings: a.totalWarnings || 0,
-        maxWarnings: config.maxActivityWarnings || 3,
-        warningLimitReached: (a.totalWarnings || 0) >= (config.maxActivityWarnings || 3),
+        maxWarnings: config.maxActivityWarnings || 2,
+        warningLimitReached: (a.totalWarnings || 0) >= (config.maxActivityWarnings || 2),
         latestActivityTime: latestLog ? latestLog.timestamp : a.startedAt || null,
         activityLogs: logs,
       };
@@ -195,7 +195,7 @@ export const getAdminActivity = async (req, res) => {
     return res.json({
       success: true,
       total: attempts.length,
-      maxWarnings: config.maxActivityWarnings || 3,
+      maxWarnings: config.maxActivityWarnings || 2,
       attempts,
     });
   } catch (error) {

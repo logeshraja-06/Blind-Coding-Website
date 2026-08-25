@@ -7,7 +7,7 @@ export const ActivityWarningModal = ({
   isOpen,
   type, // 'FULLSCREEN_EXIT' | 'TAB_SWITCH' | 'LIMIT_REACHED'
   currentWarning = 1,
-  maxWarnings = 3,
+  maxWarnings = 2,
   countdown = 3,
   onAcknowledge,
   onReturnFullscreen,

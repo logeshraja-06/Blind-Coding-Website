@@ -1,5 +1,6 @@
 import { memoryStore } from '../config/db.js';
 import { INITIAL_QUESTIONS } from '../utils/seedData.js';
+import { fisherYatesShuffle } from '../utils/shuffle.js';
 
 const DEFAULT_QUIZ_DURATION_SECONDS = 60 * 60; // 60 minutes
 const DEFAULT_TOTAL_QUESTIONS = 25;
@@ -13,7 +14,7 @@ export const getActiveConfig = () => {
     eventStartAt: null,
     eventEndAt: null,
     quizAvailability: 'ACTIVE',
-    maxActivityWarnings: 3,
+    maxActivityWarnings: 2,
     autoSubmitOnWarningLimit: true,
     fullscreenRequired: true,
     tabSwitchMonitoring: true,
@@ -23,7 +24,19 @@ export const getActiveConfig = () => {
   return config;
 };
 
-// 1. Start Quiz with Event Availability Enforcement & Activity Init
+// Helper to get master question map
+const getMasterQuestionMap = () => {
+  const masterList = Array.from(memoryStore.questions.values());
+  const source = masterList.length > 0 ? masterList : INITIAL_QUESTIONS;
+  const map = new Map();
+  source.forEach((q) => {
+    const qId = String(q.questionId || q.id);
+    map.set(qId, q);
+  });
+  return map;
+};
+
+// 1. Start Quiz with Fisher-Yates Question & Option Shuffling (Set Once)
 export const startQuiz = async (req, res) => {
   try {
     const { registerNumber } = req.body;
@@ -75,6 +88,27 @@ export const startQuiz = async (req, res) => {
     }
 
     const durationSeconds = (config.quizDurationMinutes || 60) * 60;
+    const totalQuestionsConfig = config.totalQuestions || DEFAULT_TOTAL_QUESTIONS;
+    const masterQuestionMap = getMasterQuestionMap();
+
+    // FEATURE 1: Generate Shuffled Question & Option Order ONCE per attempt
+    if (!attempt.assignedQuestions || attempt.assignedQuestions.length === 0) {
+      const allMasterQuestions = Array.from(masterQuestionMap.values());
+      const selectedPool = allMasterQuestions.slice(0, totalQuestionsConfig);
+
+      // Fisher-Yates Question Shuffle
+      const shuffledPool = fisherYatesShuffle(selectedPool);
+
+      // Fisher-Yates Option Shuffle per Question
+      attempt.assignedQuestions = shuffledPool.map((q) => {
+        const optionIds = q.options.map((opt) => opt.id);
+        const shuffledOptionOrder = fisherYatesShuffle(optionIds);
+        return {
+          questionId: q.questionId || q.id,
+          optionOrder: shuffledOptionOrder,
+        };
+      });
+    }
 
     if (!attempt.startedAt) {
       attempt.startedAt = now.toISOString();
@@ -97,6 +131,30 @@ export const startQuiz = async (req, res) => {
     const elapsedSeconds = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
     const remainingSeconds = Math.max(0, durationSeconds - elapsedSeconds);
 
+    // Build the candidate-specific sanitized questions array in assigned order
+    const candidateQuestions = attempt.assignedQuestions.map((aq) => {
+      const q = masterQuestionMap.get(String(aq.questionId));
+      const orderedOptions = aq.optionOrder.map((optId) => {
+        const found = q.options.find((o) => String(o.id) === String(optId));
+        return {
+          id: found ? found.id : optId,
+          text: found ? found.text : '',
+        };
+      });
+
+      return {
+        id: q.questionId || q.id,
+        questionId: q.questionId || q.id,
+        category: q.category,
+        difficulty: q.difficulty,
+        question: q.question,
+        codeSnippet: q.codeSnippet,
+        options: orderedOptions,
+      };
+    });
+
+    const maxWarnings = config.maxActivityWarnings || 2;
+
     return res.json({
       success: true,
       message: 'Assessment countdown started.',
@@ -104,16 +162,17 @@ export const startQuiz = async (req, res) => {
       remainingSeconds,
       durationSeconds,
       savedAnswers: attempt.answers || {},
+      questions: candidateQuestions,
       tabSwitchCount: attempt.tabSwitchCount,
       fullscreenExitCount: attempt.fullscreenExitCount,
       totalWarnings: attempt.totalWarnings,
-      maxWarnings: config.maxActivityWarnings || 3,
+      maxWarnings,
       config: {
         eventTitle: config.eventTitle,
-        totalQuestions: config.totalQuestions || DEFAULT_TOTAL_QUESTIONS,
+        totalQuestions: candidateQuestions.length,
         fullscreenRequired: config.fullscreenRequired !== false,
         tabSwitchMonitoring: config.tabSwitchMonitoring !== false,
-        maxActivityWarnings: config.maxActivityWarnings || 3,
+        maxActivityWarnings: maxWarnings,
       },
     });
   } catch (error) {
@@ -122,18 +181,48 @@ export const startQuiz = async (req, res) => {
   }
 };
 
-// 2. Return Sanitized Questions WITHOUT correctAnswer or explanation
+// 2. Return Sanitized Questions (Ordered per student if registerNumber given)
 export const getQuestions = async (req, res) => {
   try {
+    const { registerNumber } = req.query;
     const config = getActiveConfig();
-    const questionsList = [];
+    const masterQuestionMap = getMasterQuestionMap();
 
-    // Extract questions and strip security-sensitive fields
-    const masterList = Array.from(memoryStore.questions.values());
-    const source = masterList.length > 0 ? masterList : INITIAL_QUESTIONS;
+    let finalQuestions = [];
 
-    source.forEach((q) => {
-      questionsList.push({
+    if (registerNumber) {
+      const regNoClean = registerNumber.trim();
+      const attempt = memoryStore.quizAttempts.get(regNoClean);
+
+      if (attempt && attempt.assignedQuestions && attempt.assignedQuestions.length > 0) {
+        finalQuestions = attempt.assignedQuestions.map((aq) => {
+          const q = masterQuestionMap.get(String(aq.questionId));
+          const orderedOptions = aq.optionOrder.map((optId) => {
+            const found = q.options.find((o) => String(o.id) === String(optId));
+            return {
+              id: found ? found.id : optId,
+              text: found ? found.text : '',
+            };
+          });
+
+          return {
+            id: q.questionId || q.id,
+            questionId: q.questionId || q.id,
+            category: q.category,
+            difficulty: q.difficulty,
+            question: q.question,
+            codeSnippet: q.codeSnippet,
+            options: orderedOptions,
+          };
+        });
+      }
+    }
+
+    // Default fallback if no specific student attempt exists yet
+    if (finalQuestions.length === 0) {
+      const masterList = Array.from(masterQuestionMap.values());
+      const limit = config.totalQuestions || DEFAULT_TOTAL_QUESTIONS;
+      finalQuestions = masterList.slice(0, limit).map((q) => ({
         id: q.questionId || q.id,
         questionId: q.questionId || q.id,
         category: q.category,
@@ -144,15 +233,8 @@ export const getQuestions = async (req, res) => {
           id: opt.id,
           text: opt.text,
         })),
-        // NOTE: correctAnswer and explanation are explicitly EXCLUDED for student integrity
-      });
-    });
-
-    // Ensure sorted by ID
-    questionsList.sort((a, b) => a.questionId - b.questionId);
-
-    const limit = config.totalQuestions || DEFAULT_TOTAL_QUESTIONS;
-    const finalQuestions = questionsList.slice(0, limit);
+      }));
+    }
 
     return res.json({
       success: true,
@@ -161,7 +243,7 @@ export const getQuestions = async (req, res) => {
       config: {
         eventTitle: config.eventTitle,
         durationMinutes: config.quizDurationMinutes,
-        maxWarnings: config.maxActivityWarnings || 3,
+        maxWarnings: config.maxActivityWarnings || 2,
         fullscreenRequired: config.fullscreenRequired !== false,
         tabSwitchMonitoring: config.tabSwitchMonitoring !== false,
       },
@@ -196,7 +278,7 @@ export const saveAnswer = async (req, res) => {
     }
 
     if (selectedOption) {
-      attempt.answers[String(questionId)] = selectedOption.toUpperCase();
+      attempt.answers[String(questionId)] = String(selectedOption).toUpperCase();
     } else {
       delete attempt.answers[String(questionId)];
     }
@@ -214,7 +296,7 @@ export const saveAnswer = async (req, res) => {
   }
 };
 
-// 4. Log Activity Event (Tab Switch / Fullscreen Exit) with Server-Side Guard
+// 4. Log Activity Event (Tab Switch / Fullscreen Exit) with Server Guard
 export const logActivity = async (req, res) => {
   try {
     const { registerNumber, activityType } = req.body;
@@ -243,6 +325,7 @@ export const logActivity = async (req, res) => {
     }
 
     const config = getActiveConfig();
+    const maxWarnings = config.maxActivityWarnings || 2;
     const now = new Date();
 
     if (!attempt.activityLogs) {
@@ -257,7 +340,6 @@ export const logActivity = async (req, res) => {
     if (lastMatchingLog) {
       const diffMs = now.getTime() - new Date(lastMatchingLog.timestamp).getTime();
       if (diffMs < 1500) {
-        // Return existing counters without double incrementing
         const total = (attempt.tabSwitchCount || 0) + (attempt.fullscreenExitCount || 0);
         return res.json({
           success: true,
@@ -265,8 +347,10 @@ export const logActivity = async (req, res) => {
           tabSwitchCount: attempt.tabSwitchCount || 0,
           fullscreenExitCount: attempt.fullscreenExitCount || 0,
           totalWarnings: total,
-          maxWarnings: config.maxActivityWarnings || 3,
-          shouldAutoSubmit: Boolean(config.autoSubmitOnWarningLimit && total >= (config.maxActivityWarnings || 3)),
+          maxWarnings,
+          maxActivityWarnings: maxWarnings,
+          autoSubmitRequired: Boolean(config.autoSubmitOnWarningLimit && total >= maxWarnings),
+          shouldAutoSubmit: Boolean(config.autoSubmitOnWarningLimit && total >= maxWarnings),
         });
       }
     }
@@ -292,8 +376,7 @@ export const logActivity = async (req, res) => {
 
     memoryStore.quizAttempts.set(regNoClean, attempt);
 
-    const maxWarnings = config.maxActivityWarnings || 3;
-    const shouldAutoSubmit = Boolean(config.autoSubmitOnWarningLimit && attempt.totalWarnings >= maxWarnings);
+    const autoSubmitRequired = Boolean(config.autoSubmitOnWarningLimit && attempt.totalWarnings >= maxWarnings);
 
     return res.json({
       success: true,
@@ -302,7 +385,9 @@ export const logActivity = async (req, res) => {
       fullscreenExitCount: attempt.fullscreenExitCount,
       totalWarnings: attempt.totalWarnings,
       maxWarnings,
-      shouldAutoSubmit,
+      maxActivityWarnings: maxWarnings,
+      autoSubmitRequired,
+      shouldAutoSubmit: autoSubmitRequired,
       message: `Activity logged: ${activityType}. Total warnings: ${attempt.totalWarnings}/${maxWarnings}`,
     });
   } catch (error) {
@@ -311,7 +396,7 @@ export const logActivity = async (req, res) => {
   }
 };
 
-// 5. Submit Assessment (Server computes score & marks final status)
+// 5. Submit Assessment (Server computes score comparing stable option IDs)
 export const submitQuiz = async (req, res) => {
   try {
     const { registerNumber, isAutoSubmit } = req.body;
@@ -324,6 +409,7 @@ export const submitQuiz = async (req, res) => {
     const config = getActiveConfig();
     const totalQuestionsConfig = config.totalQuestions || DEFAULT_TOTAL_QUESTIONS;
     const durationSeconds = (config.quizDurationMinutes || 60) * 60;
+    const masterQuestionMap = getMasterQuestionMap();
 
     if (!attempt) {
       return res.status(404).json({ success: false, message: 'Quiz attempt not found.' });
@@ -349,18 +435,23 @@ export const submitQuiz = async (req, res) => {
     const endTime = Date.now();
     const elapsedSeconds = Math.min(durationSeconds, Math.floor((endTime - startTime) / 1000));
 
-    // SERVER-SIDE SCORE COMPUTATION (Secure)
+    // SERVER-SIDE SCORE COMPUTATION (Compare stable selectedOption vs correctAnswer)
     let correctCount = 0;
     const studentAnswers = attempt.answers || {};
 
-    const masterQuestions = Array.from(memoryStore.questions.values());
-    const sourceQuestions = masterQuestions.length > 0 ? masterQuestions : INITIAL_QUESTIONS;
+    const questionsToScore =
+      attempt.assignedQuestions && attempt.assignedQuestions.length > 0
+        ? attempt.assignedQuestions
+        : Array.from(masterQuestionMap.values()).slice(0, totalQuestionsConfig);
 
-    sourceQuestions.slice(0, totalQuestionsConfig).forEach((q) => {
-      const qId = String(q.questionId || q.id);
-      const studentChoice = studentAnswers[qId];
-      if (studentChoice && studentChoice === q.correctAnswer) {
-        correctCount++;
+    questionsToScore.forEach((aq) => {
+      const qId = String(aq.questionId || aq.id);
+      const q = masterQuestionMap.get(qId);
+      if (q) {
+        const studentChoice = studentAnswers[qId];
+        if (studentChoice && String(studentChoice).toUpperCase() === String(q.correctAnswer).toUpperCase()) {
+          correctCount++;
+        }
       }
     });
 
@@ -375,7 +466,6 @@ export const submitQuiz = async (req, res) => {
     const secs = elapsedSeconds % 60;
     const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-    // Update attempt in memory store
     attempt.status = 'COMPLETED';
     attempt.submittedAt = new Date().toISOString();
     attempt.timeTakenSeconds = elapsedSeconds;
@@ -395,7 +485,6 @@ export const submitQuiz = async (req, res) => {
 
     memoryStore.quizAttempts.set(regNoClean, attempt);
 
-    // RETURN STRICTLY PRIVATE SUMMARY
     return res.json({
       success: true,
       message: isAutoSubmit ? 'Assessment submitted automatically.' : 'Assessment submitted successfully.',
@@ -460,7 +549,7 @@ export const getStudentResult = async (req, res) => {
   }
 };
 
-// 7. Get Public Event Configuration for Student Flow
+// 7. Get Public Event Configuration
 export const getPublicQuizConfig = async (req, res) => {
   try {
     const config = getActiveConfig();
@@ -473,10 +562,10 @@ export const getPublicQuizConfig = async (req, res) => {
         eventStartAt: config.eventStartAt,
         eventEndAt: config.eventEndAt,
         quizAvailability: config.quizAvailability,
-        maxActivityWarnings: config.maxActivityWarnings,
-        autoSubmitOnWarningLimit: config.autoSubmitOnWarningLimit,
-        fullscreenRequired: config.fullscreenRequired,
-        tabSwitchMonitoring: config.tabSwitchMonitoring,
+        maxActivityWarnings: config.maxActivityWarnings || 2,
+        autoSubmitOnWarningLimit: config.autoSubmitOnWarningLimit !== false,
+        fullscreenRequired: config.fullscreenRequired !== false,
+        tabSwitchMonitoring: config.tabSwitchMonitoring !== false,
         passingPercentage: config.passingPercentage,
       },
     });

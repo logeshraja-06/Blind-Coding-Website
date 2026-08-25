@@ -29,7 +29,7 @@ const eventConfigSchema = new mongoose.Schema(
     },
     maxActivityWarnings: {
       type: Number,
-      default: 3,
+      default: 2,
     },
     autoSubmitOnWarningLimit: {
       type: Boolean,

@@ -13,7 +13,7 @@ export const memoryStore = {
     eventStartAt: null,
     eventEndAt: null,
     quizAvailability: 'ACTIVE', // 'ACTIVE' | 'INACTIVE'
-    maxActivityWarnings: 3,
+    maxActivityWarnings: 2,
     autoSubmitOnWarningLimit: true,
     fullscreenRequired: true,
     tabSwitchMonitoring: true,

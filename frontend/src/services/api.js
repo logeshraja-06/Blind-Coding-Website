@@ -37,7 +37,7 @@ export const api = {
     }
   },
 
-  // 3. Start Quiz Countdown & Retrieve Server StartedAt & Warning State
+  // 3. Start Quiz Countdown & Retrieve Server StartedAt & Shuffled Assigned Questions
   async startQuiz(registerNumber) {
     try {
       const res = await fetch(`${API_BASE_URL}/quiz/start`, {
@@ -55,15 +55,18 @@ export const api = {
         tabSwitchCount: 0,
         fullscreenExitCount: 0,
         totalWarnings: 0,
-        maxWarnings: 3,
+        maxWarnings: 2,
       };
     }
   },
 
-  // 4. Fetch Sanitized Questions (Zero answer leakage)
-  async getQuestions() {
+  // 4. Fetch Sanitized Questions (Ordered for student if registerNumber passed)
+  async getQuestions(registerNumber = null) {
     try {
-      const res = await fetch(`${API_BASE_URL}/quiz/questions`);
+      const url = registerNumber
+        ? `${API_BASE_URL}/quiz/questions?registerNumber=${encodeURIComponent(registerNumber)}`
+        : `${API_BASE_URL}/quiz/questions`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success && data.questions) {
         return data.questions;
@@ -105,7 +108,9 @@ export const api = {
         tabSwitchCount: 0,
         fullscreenExitCount: 0,
         totalWarnings: 0,
-        maxWarnings: 3,
+        maxWarnings: 2,
+        maxActivityWarnings: 2,
+        autoSubmitRequired: false,
         shouldAutoSubmit: false,
       };
     }
@@ -160,7 +165,7 @@ export const api = {
       quizDurationMinutes: 60,
       totalQuestions: 25,
       quizAvailability: 'ACTIVE',
-      maxActivityWarnings: 3,
+      maxActivityWarnings: 2,
       fullscreenRequired: true,
       tabSwitchMonitoring: true,
     };

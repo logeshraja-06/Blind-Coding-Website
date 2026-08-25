@@ -8,12 +8,12 @@ const QuizContext = createContext(null);
 export const QuizProvider = ({ children }) => {
   const { addToast } = useToast();
 
-  // Dynamic Event Configuration
+  // Dynamic Event Configuration (Default max warnings = 2)
   const [eventConfig, setEventConfig] = useState({
     eventTitle: 'BLIND CODING',
     quizDurationMinutes: 60,
     totalQuestions: TOTAL_QUESTIONS,
-    maxActivityWarnings: 3,
+    maxActivityWarnings: 2,
     fullscreenRequired: true,
     tabSwitchMonitoring: true,
     quizAvailability: 'ACTIVE',
@@ -25,16 +25,19 @@ export const QuizProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Quiz active questions
-  const [questions, setQuestions] = useState(QUIZ_QUESTIONS);
+  // Quiz active questions (Ordered & shuffled per student)
+  const [questions, setQuestions] = useState(() => {
+    const saved = localStorage.getItem('blindcode_assigned_questions');
+    return saved ? JSON.parse(saved) : QUIZ_QUESTIONS;
+  });
 
-  // Selected answers: { [questionId]: 'A' | 'B' | 'C' | 'D' }
+  // Selected answers: { [questionId]: 'A' | 'B' | 'C' | 'D' } (stable option IDs)
   const [answers, setAnswers] = useState(() => {
     const saved = localStorage.getItem('blindcode_answers');
     return saved ? JSON.parse(saved) : {};
   });
 
-  // Answer saving status map: { [questionId]: 'idle' | 'saving' | 'saved' | 'error' }
+  // Answer saving status map: { [questionId]: 'idle' | 'saving' | 'retrying' | 'saved' | 'error' }
   const [saveStatusMap, setSaveStatusMap] = useState({});
 
   // Current active question index (0 to 24)
@@ -54,7 +57,7 @@ export const QuizProvider = ({ children }) => {
     const saved = localStorage.getItem('blindcode_activity_warnings');
     return saved
       ? JSON.parse(saved)
-      : { tabSwitchCount: 0, fullscreenExitCount: 0, totalWarnings: 0, maxWarnings: 3 };
+      : { tabSwitchCount: 0, fullscreenExitCount: 0, totalWarnings: 0, maxWarnings: 2 };
   });
 
   // Duration in seconds (dynamic from config)
@@ -87,11 +90,16 @@ export const QuizProvider = ({ children }) => {
   useEffect(() => {
     const loadConfigAndQuestions = async () => {
       try {
-        const [config, list] = await Promise.all([api.getQuizConfig(), api.getQuestions()]);
+        const [config, list] = await Promise.all([
+          api.getQuizConfig(),
+          api.getQuestions(participant?.registerNumber),
+        ]);
         if (config) {
           setEventConfig((prev) => ({ ...prev, ...config }));
         }
-        if (list && list.length > 0) {
+        // Only override questions if local assigned questions not already stored
+        const savedAssigned = localStorage.getItem('blindcode_assigned_questions');
+        if (!savedAssigned && list && list.length > 0) {
           setQuestions(list);
         }
       } catch (err) {
@@ -99,7 +107,7 @@ export const QuizProvider = ({ children }) => {
       }
     };
     loadConfigAndQuestions();
-  }, []);
+  }, [participant?.registerNumber]);
 
   // Save student registration
   const registerStudent = useCallback(async (details) => {
@@ -136,7 +144,7 @@ export const QuizProvider = ({ children }) => {
           tabSwitchCount: response.attempt.tabSwitchCount || 0,
           fullscreenExitCount: response.attempt.fullscreenExitCount || 0,
           totalWarnings: response.attempt.totalWarnings || 0,
-          maxWarnings: eventConfig.maxActivityWarnings || 3,
+          maxWarnings: eventConfig.maxActivityWarnings || 2,
         };
         setActivityWarnings(warnings);
         localStorage.setItem('blindcode_activity_warnings', JSON.stringify(warnings));
@@ -146,7 +154,7 @@ export const QuizProvider = ({ children }) => {
     return response;
   }, [eventConfig.maxActivityWarnings]);
 
-  // Start Quiz (Server timestamp + warning restore)
+  // Start Quiz (Server assigns randomized questions & option order once)
   const startQuiz = useCallback(async () => {
     const regNo = participant?.registerNumber;
     let serverRes = null;
@@ -160,7 +168,7 @@ export const QuizProvider = ({ children }) => {
 
     const startMs = serverRes?.startedAt ? new Date(serverRes.startedAt).getTime() : Date.now();
     const remaining = serverRes?.remainingSeconds !== undefined ? serverRes.remainingSeconds : durationSeconds;
-    const maxWarn = serverRes?.maxWarnings || eventConfig.maxActivityWarnings || 3;
+    const maxWarn = serverRes?.maxWarnings || eventConfig.maxActivityWarnings || 2;
 
     setStartedAt(startMs);
     setQuizStatus('in_progress');
@@ -174,6 +182,12 @@ export const QuizProvider = ({ children }) => {
       maxWarnings: maxWarn,
     };
     setActivityWarnings(initialWarnings);
+
+    // Save assigned questions order (Fisher-Yates shuffled by server)
+    if (serverRes?.questions && serverRes.questions.length > 0) {
+      setQuestions(serverRes.questions);
+      localStorage.setItem('blindcode_assigned_questions', JSON.stringify(serverRes.questions));
+    }
 
     localStorage.setItem('blindcode_started_at', startMs.toString());
     localStorage.setItem('blindcode_activity_warnings', JSON.stringify(initialWarnings));
@@ -233,6 +247,7 @@ export const QuizProvider = ({ children }) => {
     setQuizStatus('submitted');
     localStorage.setItem('blindcode_result', JSON.stringify(backendResult));
     localStorage.removeItem('blindcode_started_at');
+    localStorage.removeItem('blindcode_assigned_questions');
 
     if (isAutoSubmit) {
       addToast('Assessment submitted automatically.', 'warning', 5000);
@@ -255,7 +270,7 @@ export const QuizProvider = ({ children }) => {
           tabSwitchCount: res.tabSwitchCount,
           fullscreenExitCount: res.fullscreenExitCount,
           totalWarnings: res.totalWarnings,
-          maxWarnings: res.maxWarnings || eventConfig.maxActivityWarnings || 3,
+          maxWarnings: res.maxWarnings || res.maxActivityWarnings || eventConfig.maxActivityWarnings || 2,
         };
         setActivityWarnings(updated);
         localStorage.setItem('blindcode_activity_warnings', JSON.stringify(updated));
@@ -370,13 +385,14 @@ export const QuizProvider = ({ children }) => {
     localStorage.removeItem('blindcode_result');
     localStorage.removeItem('blindcode_current_q');
     localStorage.removeItem('blindcode_activity_warnings');
+    localStorage.removeItem('blindcode_assigned_questions');
     setAnswers({});
     setCurrentIndex(0);
     setStartedAt(null);
     setRemainingSeconds(durationSeconds);
     setQuizStatus('idle');
     setQuizResult(null);
-    setActivityWarnings({ tabSwitchCount: 0, fullscreenExitCount: 0, totalWarnings: 0, maxWarnings: 3 });
+    setActivityWarnings({ tabSwitchCount: 0, fullscreenExitCount: 0, totalWarnings: 0, maxWarnings: 2 });
   }, [durationSeconds]);
 
   const answeredCount = Object.keys(answers).length;

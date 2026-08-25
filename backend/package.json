@@ -1,7 +1,7 @@
 {
-  "name": "blindcode-backend",
+  "name": "blindcode-server",
   "version": "1.0.0",
-  "description": "BLINDCODE MERN API Server",
+  "description": "BLINDCODE MERN Stack Backend API",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -9,10 +9,16 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.2",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
     "mongoose": "^8.3.0"
   },
   "devDependencies": {
