@@ -63,8 +63,21 @@ export const Quiz = () => {
   const wasHiddenRef = useRef(false);
   const lastFullscreenCheckRef = useRef(Date.now());
   const autoSubmitTimerRef = useRef(null);
+  const limitReachedTriggeredRef = useRef(false);
+  const pendingSaveRef = useRef(null);
 
   const maxWarnings = activityWarnings?.maxWarnings || eventConfig?.maxActivityWarnings || 2;
+
+  // Cleanup on unmount for safety and hygiene
+  useEffect(() => {
+    return () => {
+      if (autoSubmitTimerRef.current) {
+        clearInterval(autoSubmitTimerRef.current);
+        autoSubmitTimerRef.current = null;
+      }
+      limitReachedTriggeredRef.current = false;
+    };
+  }, []);
 
   // If no participant or quiz is already submitted, redirect
   useEffect(() => {
@@ -75,8 +88,35 @@ export const Quiz = () => {
     }
   }, [participant, quizStatus, navigate]);
 
-  // Check if warning limit reached from backend state
+  const handleSelectOption = useCallback((optionId) => {
+    if (!isLocked && currentQuestion?.id) {
+      pendingSaveRef.current = selectAnswer(currentQuestion.id, optionId);
+    }
+  }, [isLocked, selectAnswer, currentQuestion?.id]);
+
+  const handleFinalAutoSubmit = useCallback(async () => {
+    try {
+      if (pendingSaveRef.current) {
+        await pendingSaveRef.current; // ensure last answer save (incl. its single retry) has landed
+      }
+    } catch (e) {
+      console.warn('Pending answer save did not resolve before auto-submit:', e);
+    } finally {
+      await submitQuiz(true);
+      navigate('/result');
+    }
+  }, [submitQuiz, navigate]);
+
+  // Check if warning limit reached from backend state (guarded: run once)
   const handleWarningLimitReached = useCallback(() => {
+    if (limitReachedTriggeredRef.current) return; // guard: only run once
+    limitReachedTriggeredRef.current = true;
+
+    if (autoSubmitTimerRef.current) {
+      clearInterval(autoSubmitTimerRef.current);
+      autoSubmitTimerRef.current = null;
+    }
+
     setIsLocked(true);
     setWarningModal({
       isOpen: true,
@@ -91,14 +131,13 @@ export const Quiz = () => {
       setWarningModal((prev) => ({ ...prev, countdown: Math.max(0, count) }));
       if (count <= 0) {
         clearInterval(interval);
-        submitQuiz(true).then(() => {
-          navigate('/result');
-        });
+        autoSubmitTimerRef.current = null;
+        handleFinalAutoSubmit();
       }
     }, 1000);
 
     autoSubmitTimerRef.current = interval;
-  }, [maxWarnings, submitQuiz, navigate]);
+  }, [maxWarnings, handleFinalAutoSubmit]);
 
   // 1. FULLSCREEN EXIT DETECTION
   useEffect(() => {
@@ -224,21 +263,15 @@ export const Quiz = () => {
         prevQuestion();
       } else if (['1', '2', '3', '4'].includes(e.key)) {
         const optionMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
-        selectAnswer(currentQuestion.id, optionMap[e.key]);
+        handleSelectOption(optionMap[e.key]);
       } else if (['a', 'b', 'c', 'd', 'A', 'B', 'C', 'D'].includes(e.key)) {
-        selectAnswer(currentQuestion.id, e.key.toUpperCase());
+        handleSelectOption(e.key.toUpperCase());
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, totalQuestions, currentQuestion, nextQuestion, prevQuestion, selectAnswer, isLocked]);
-
-  const handleSelectOption = (optionId) => {
-    if (!isLocked) {
-      selectAnswer(currentQuestion.id, optionId);
-    }
-  };
+  }, [currentIndex, totalQuestions, nextQuestion, prevQuestion, handleSelectOption, isLocked]);
 
   const handleConfirmSubmit = async () => {
     setIsSubmitting(true);

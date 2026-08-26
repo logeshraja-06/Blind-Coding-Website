@@ -295,25 +295,34 @@ export const QuizProvider = ({ children }) => {
 
     const regNo = participant?.registerNumber;
     if (regNo) {
-      let saveRes = await api.saveAnswer(regNo, questionId, optionId);
+      try {
+        let saveRes = await api.saveAnswer(regNo, questionId, optionId);
 
-      // Single automatic retry on failure
-      if (!saveRes || !saveRes.success) {
-        setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'retrying' }));
-        await new Promise((r) => setTimeout(r, 600));
-        saveRes = await api.saveAnswer(regNo, questionId, optionId);
-      }
+        // Single automatic retry on failure
+        if (!saveRes || !saveRes.success) {
+          setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'retrying' }));
+          await new Promise((r) => setTimeout(r, 600));
+          saveRes = await api.saveAnswer(regNo, questionId, optionId);
+        }
 
-      if (saveRes && saveRes.success) {
-        setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'saved' }));
-        setTimeout(() => {
-          setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'idle' }));
-        }, 1200);
-      } else {
+        if (saveRes && saveRes.success) {
+          setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'saved' }));
+          setTimeout(() => {
+            setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'idle' }));
+          }, 1200);
+          return saveRes;
+        } else {
+          setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'error' }));
+          return saveRes || { success: false };
+        }
+      } catch (err) {
+        console.warn('saveAnswer error in selectAnswer:', err);
         setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'error' }));
+        return { success: false, error: err };
       }
     } else {
       setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'saved' }));
+      return { success: true };
     }
   }, [participant]);
 

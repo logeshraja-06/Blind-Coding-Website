@@ -270,7 +270,50 @@ export const saveAnswer = async (req, res) => {
     }
 
     if (attempt.status === 'COMPLETED') {
-      return res.status(403).json({ success: false, message: 'Assessment already completed. Modifications disallowed.' });
+      const submittedMs = attempt.submittedAt ? new Date(attempt.submittedAt).getTime() : 0;
+      const graceMs = 2000;
+      if (Date.now() - submittedMs > graceMs) {
+        return res.status(403).json({ success: false, message: 'Assessment already completed. Modifications disallowed.' });
+      }
+
+      // Grace-period late answer: accept it and recompute the score
+      if (!attempt.answers) attempt.answers = {};
+      if (selectedOption) {
+        attempt.answers[String(questionId)] = String(selectedOption).toUpperCase();
+      } else {
+        delete attempt.answers[String(questionId)];
+      }
+
+      const config = getActiveConfig();
+      const totalQuestionsConfig = config.totalQuestions || DEFAULT_TOTAL_QUESTIONS;
+      const masterQuestionMap = getMasterQuestionMap();
+      const questionsToScore =
+        attempt.assignedQuestions && attempt.assignedQuestions.length > 0
+          ? attempt.assignedQuestions
+          : Array.from(masterQuestionMap.values()).slice(0, totalQuestionsConfig);
+
+      let correctCount = 0;
+      questionsToScore.forEach((aq) => {
+        const qId = String(aq.questionId || aq.id);
+        const q = masterQuestionMap.get(qId);
+        if (q) {
+          const studentChoice = attempt.answers[qId];
+          if (studentChoice && String(studentChoice).toUpperCase() === String(q.correctAnswer).toUpperCase()) {
+            correctCount++;
+          }
+        }
+      });
+
+      attempt.score = correctCount;
+      attempt.percentage = Math.round((correctCount / totalQuestionsConfig) * 100);
+      memoryStore.quizAttempts.set(regNoClean, attempt);
+
+      return res.json({
+        success: true,
+        message: 'Late answer accepted within grace period; score recalculated.',
+        savedCount: Object.keys(attempt.answers).length,
+        lateGraceAccepted: true,
+      });
     }
 
     if (!attempt.answers) {
