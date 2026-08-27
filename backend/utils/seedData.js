@@ -1,5 +1,9 @@
 import bcrypt from 'bcryptjs';
-import { memoryStore } from '../config/db.js';
+import { Question } from '../models/Question.js';
+import { Admin } from '../models/Admin.js';
+import { EventConfig } from '../models/EventConfig.js';
+import { Student } from '../models/Student.js';
+import { QuizAttempt } from '../models/QuizAttempt.js';
 
 export const INITIAL_QUESTIONS = [
   {
@@ -18,7 +22,6 @@ export const INITIAL_QUESTIONS = [
     explanation: "`typeof 1` returns the string \"number\". Then `typeof \"number\"` evaluates to \"string\"."
   },
   {
-    id: 2,
     questionId: 2,
     category: "Python",
     difficulty: "Easy",
@@ -34,7 +37,6 @@ export const INITIAL_QUESTIONS = [
     explanation: "`append()` adds the entire list `[5, 6]` as a single element at index 4, making the length 5 instead of 6."
   },
   {
-    id: 3,
     questionId: 3,
     category: "C++",
     difficulty: "Medium",
@@ -50,7 +52,6 @@ export const INITIAL_QUESTIONS = [
     explanation: "`*(ptr + 2)` dereferences index 2 (value 30). `*ptr + 2` dereferences index 0 (10) and adds 2, yielding 12."
   },
   {
-    id: 4,
     questionId: 4,
     category: "Algorithms",
     difficulty: "Easy",
@@ -66,7 +67,6 @@ export const INITIAL_QUESTIONS = [
     explanation: "In a balanced BST, each comparison halves the search space, giving an average time complexity of O(log N)."
   },
   {
-    id: 5,
     questionId: 5,
     category: "JavaScript",
     difficulty: "Medium",
@@ -82,7 +82,6 @@ export const INITIAL_QUESTIONS = [
     explanation: "Synchronous code runs first ('A', 'D'). Microtasks (Promises) run next ('C'). Macrotasks (setTimeout) execute in the next tick ('B')."
   },
   {
-    id: 6,
     questionId: 6,
     category: "Bitwise Logic",
     difficulty: "Medium",
@@ -98,295 +97,276 @@ export const INITIAL_QUESTIONS = [
     explanation: "Subtracting 1 from a power of 2 inverts all bits after the only set bit. Bitwise ANDing them results in 0."
   },
   {
-    id: 7,
     questionId: 7,
-    category: "Python",
+    category: "C++",
     difficulty: "Hard",
-    question: "What is the output of the following Python default argument trap?",
-    codeSnippet: "def addItem(item, lst=[]):\n    lst.append(item)\n    return lst\n\nprint(addItem(1))\nprint(addItem(2))",
+    question: "What is printed when this C++ code with static variables runs?",
+    codeSnippet: "#include <iostream>\nusing namespace std;\nvoid countCalls() {\n    static int count = 0;\n    int local = 0;\n    cout << ++count << \":\" << ++local << \" \";\n}\nint main() {\n    countCalls();\n    countCalls();\n    return 0;\n}",
     options: [
-      { id: "A", text: "[1] followed by [2]" },
-      { id: "B", text: "[1] followed by [1, 2]" },
-      { id: "C", text: "[1, 2] followed by [1, 2]" },
-      { id: "D", text: "TypeError: mutable default argument" }
+      { id: "A", text: "1:1 1:1" },
+      { id: "B", text: "1:1 2:1" },
+      { id: "C", text: "1:1 2:2" },
+      { id: "D", text: "0:0 1:1" }
     ],
     correctAnswer: "B",
-    explanation: "Default parameter values in Python are evaluated once at function definition time, so the list persists across multiple calls."
+    explanation: "Static variables retain their value across calls (`count` goes 0->1->2), while automatic/local variables are reinitialized each invocation (`local` is 1 both times)."
   },
   {
-    id: 8,
     questionId: 8,
+    category: "Python",
+    difficulty: "Medium",
+    question: "What is the result of multiplying a list containing a mutable list in Python?",
+    codeSnippet: "grid = [[0]] * 3\ngrid[0][0] = 99\nprint(grid)",
+    options: [
+      { id: "A", text: "[[99], [0], [0]]" },
+      { id: "B", text: "[[99], [99], [99]]" },
+      { id: "C", text: "[[0], [0], [99]]" },
+      { id: "D", text: "TypeError: invalid assignment" }
+    ],
+    correctAnswer: "B",
+    explanation: "The `*` operator on a list creates shallow copies that reference the same sublist object in memory. Mutating one mutates all references."
+  },
+  {
+    questionId: 9,
     category: "Data Structures",
     difficulty: "Easy",
-    question: "Which data structure follows the Last In, First Out (LIFO) principle and is used for function call stacks?",
+    question: "Which data structure is fundamentally utilized for Depth-First Search (DFS) in a graph?",
     codeSnippet: null,
     options: [
-      { id: "A", text: "Queue" },
-      { id: "B", text: "Stack" },
-      { id: "C", text: "Linked List" },
-      { id: "D", text: "Heap" }
+      { id: "A", text: "Queue (FIFO)" },
+      { id: "B", text: "Stack (LIFO)" },
+      { id: "C", text: "Circular Buffer" },
+      { id: "D", text: "Priority Heap" }
     ],
     correctAnswer: "B",
-    explanation: "A Stack works on LIFO (Last In, First Out) ordering, making it the standard structure for recursion and call stack management."
+    explanation: "DFS traverses deep along paths before backtracking, matching the Last-In First-Out (LIFO) order of a Stack or recursive call stack."
   },
   {
-    id: 9,
-    questionId: 9,
-    category: "JavaScript",
-    difficulty: "Hard",
-    question: "What is the evaluation of `[] + {}` and `{} + []` in standard JavaScript expression contexts?",
-    codeSnippet: "let val1 = [] + {};\nlet val2 = {} + [];",
-    options: [
-      { id: "A", text: "\"[object Object]\" and \"[object Object]\" (in expression context)" },
-      { id: "B", text: "\"undefined\" and \"NaN\"" },
-      { id: "C", text: "\"0\" and \"0\"" },
-      { id: "D", text: "TypeError" }
-    ],
-    correctAnswer: "A",
-    explanation: "In expression context, `[]` converts to `\"\"` and `{}` converts to `\"[object Object]\"`, resulting in concatenation to `\"[object Object]\"`."
-  },
-  {
-    id: 10,
     questionId: 10,
     category: "Recursion",
     difficulty: "Medium",
-    question: "What does the following recursive function compute for inputs `mystery(3, 4)`?",
+    question: "What is the return value of `mystery(4, 3)` for the recursive function below?",
     codeSnippet: "int mystery(int a, int b) {\n    if (b == 0) return 0;\n    if (b % 2 == 0) return mystery(a + a, b / 2);\n    return mystery(a + a, b / 2) + a;\n}",
     options: [
-      { id: "A", text: "3^4 = 81" },
-      { id: "B", text: "3 + 4 = 7" },
-      { id: "C", text: "3 * 4 = 12" },
-      { id: "D", text: "3 * 2^4 = 48" }
-    ],
-    correctAnswer: "C",
-    explanation: "This implements Russian Peasant (binary) multiplication, returning the product of `a * b` (12)."
-  },
-  {
-    id: 11,
-    questionId: 11,
-    category: "C++",
-    difficulty: "Medium",
-    question: "What is the output of this C++ pre/post increment expression?",
-    codeSnippet: "int a = 5;\nint b = ++a + a++;\ncout << a << \" \" << b;",
-    options: [
-      { id: "A", text: "7 12" },
-      { id: "B", text: "7 11" },
-      { id: "C", text: "6 12" },
-      { id: "D", text: "Undefined" }
-    ],
-    correctAnswer: "A",
-    explanation: "`++a` increments `a` to 6. `a++` provides 6 (and increments to 7). Total for `b` is 6 + 6 = 12."
-  },
-  {
-    id: 12,
-    questionId: 12,
-    category: "Logic & Math",
-    difficulty: "Easy",
-    question: "If you have an unsorted array of size N containing integers from 1 to N+1 with exactly one missing number, what is the fastest method to find it?",
-    codeSnippet: null,
-    options: [
-      { id: "A", text: "Sort the array and scan linearly (O(N log N))" },
-      { id: "B", text: "Compare Expected Sum vs Actual Sum (O(N) time, O(1) space)" },
-      { id: "C", text: "Use nested loops (O(N^2))" },
-      { id: "D", text: "Insert into Hash Set (O(N) space)" }
+      { id: "A", text: "7" },
+      { id: "B", text: "12" },
+      { id: "C", text: "64" },
+      { id: "D", text: "1" }
     ],
     correctAnswer: "B",
-    explanation: "The sum formula `(N+1)*(N+2)/2` minus the array sum directly yields the missing number."
+    explanation: "This computes Russian Peasant Multiplication (`a * b`). For 4 and 3: 4 * 3 = 12."
   },
   {
-    id: 13,
-    questionId: 13,
-    category: "Python",
-    difficulty: "Medium",
-    question: "What is the result of the following Python slicing syntax?",
-    codeSnippet: "text = \"BLINDCODE\"\nprint(text[1:7:2])",
-    options: [
-      { id: "A", text: "\"LNC\"" },
-      { id: "B", text: "\"LIC\"" },
-      { id: "C", text: "\"LNO\"" },
-      { id: "D", text: "\"BND\"" }
-    ],
-    correctAnswer: "A",
-    explanation: "Indices 1 ('L'), 3 ('N'), and 5 ('C') produce 'LNC'."
-  },
-  {
-    id: 14,
-    questionId: 14,
-    category: "Data Structures",
-    difficulty: "Medium",
-    question: "Which collision resolution technique in Hash Tables uses a linked list at each bucket?",
-    codeSnippet: null,
-    options: [
-      { id: "A", text: "Linear Probing" },
-      { id: "B", text: "Quadratic Probing" },
-      { id: "C", text: "Separate Chaining" },
-      { id: "D", text: "Double Hashing" }
-    ],
-    correctAnswer: "C",
-    explanation: "Separate Chaining stores multiple keys that hash to the same bucket in a linked list."
-  },
-  {
-    id: 15,
-    questionId: 15,
+    questionId: 11,
     category: "JavaScript",
     difficulty: "Hard",
-    question: "What does the following snippet return when invoked with `func(1)(2)(3)()`?",
-    codeSnippet: "const func = a => b => b !== undefined ? func(a + b) : a;",
+    question: "What is the output of the loop with `var` closures?",
+    codeSnippet: "for (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 10);\n}",
     options: [
-      { id: "A", text: "6" },
-      { id: "B", text: "Function object" },
-      { id: "C", text: "undefined" },
-      { id: "D", text: "NaN" }
+      { id: "A", text: "0 1 2" },
+      { id: "B", text: "3 3 3" },
+      { id: "C", text: "undefined undefined undefined" },
+      { id: "D", text: "2 2 2" }
     ],
-    correctAnswer: "A",
-    explanation: "Infinite currying accumulator sums 1 + 2 + 3 = 6 when called with empty argument."
+    correctAnswer: "B",
+    explanation: "`var` is function-scoped. When the callbacks fire from the macrotask queue, the loop has completed and `i` equals 3."
   },
   {
-    id: 16,
-    questionId: 16,
+    questionId: 12,
     category: "Algorithms",
     difficulty: "Medium",
-    question: "What is the worst-case time complexity of QuickSort when the pivot chosen is always an extreme element?",
+    question: "What is the worst-case time complexity of QuickSort when using the naive first-element pivot on an already sorted array?",
     codeSnippet: null,
     options: [
       { id: "A", text: "O(N log N)" },
-      { id: "B", text: "O(N^2)" },
-      { id: "C", text: "O(N)" },
+      { id: "B", text: "O(N)" },
+      { id: "C", text: "O(N²)" },
       { id: "D", text: "O(log N)" }
     ],
-    correctAnswer: "B",
-    explanation: "Unbalanced partitioning creates recursion depth of N, yielding O(N^2) worst case."
-  },
-  {
-    id: 17,
-    questionId: 17,
-    category: "C++",
-    difficulty: "Medium",
-    question: "What is the output of the following struct size in standard 64-bit alignment?",
-    codeSnippet: "struct Example {\n    char a;\n    int b;\n    char c;\n};\ncout << sizeof(Example);",
-    options: [
-      { id: "A", text: "6" },
-      { id: "B", text: "8" },
-      { id: "C", text: "12" },
-      { id: "D", text: "16" }
-    ],
     correctAnswer: "C",
-    explanation: "Due to struct member alignment padding, the total size aligns to 12 bytes."
+    explanation: "Selecting the first element on a sorted array partitions elements into unbalanced subarrays of sizes 0 and N-1, degrading recursion depth to O(N) and total operations to O(N²)."
   },
   {
-    id: 18,
-    questionId: 18,
-    category: "SQL & DB Logic",
-    difficulty: "Easy",
-    question: "Which clause in SQL is used to filter aggregated grouped results?",
-    codeSnippet: "SELECT department, COUNT(*)\nFROM participants\nGROUP BY department\n______ COUNT(*) > 10;",
-    options: [
-      { id: "A", text: "WHERE" },
-      { id: "B", text: "HAVING" },
-      { id: "C", text: "FILTER" },
-      { id: "D", text: "ORDER BY" }
-    ],
-    correctAnswer: "B",
-    explanation: "The `HAVING` clause filters aggregated groupings."
-  },
-  {
-    id: 19,
-    questionId: 19,
+    questionId: 13,
     category: "Python",
-    difficulty: "Easy",
-    question: "What is the output of `bool('False')` and `bool([])` in Python?",
-    codeSnippet: "print(bool('False'), bool([]))",
-    options: [
-      { id: "A", text: "False False" },
-      { id: "B", text: "True True" },
-      { id: "C", text: "True False" },
-      { id: "D", text: "False True" }
-    ],
-    correctAnswer: "C",
-    explanation: "Any non-empty string is `True`, empty list is `False`."
-  },
-  {
-    id: 20,
-    questionId: 20,
-    category: "Bitwise Logic",
     difficulty: "Medium",
-    question: "What is the value of `5 ^ 5` followed by `5 ^ 0` using the XOR operator?",
-    codeSnippet: "int res1 = 5 ^ 5;\nint res2 = 5 ^ 0;",
+    question: "What does this Python dictionary comprehension generate?",
+    codeSnippet: "d = {x: x**2 for x in (1, 2, 3) if x % 2 != 0}\nprint(sum(d.values()))",
     options: [
-      { id: "A", text: "0 and 5" },
-      { id: "B", text: "5 and 0" },
-      { id: "C", text: "5 and 5" },
-      { id: "D", text: "1 and 0" }
+      { id: "A", text: "10" },
+      { id: "B", text: "14" },
+      { id: "C", text: "9" },
+      { id: "D", text: "1" }
     ],
     correctAnswer: "A",
-    explanation: "`x ^ x = 0` and `x ^ 0 = x`."
+    explanation: "The condition filters for odd numbers: 1 (1² = 1) and 3 (3² = 9). The sum of values 1 + 9 is 10."
   },
   {
-    id: 21,
-    questionId: 21,
-    category: "JavaScript",
+    questionId: 14,
+    category: "Bitwise Logic",
+    difficulty: "Easy",
+    question: "What is the value of `5 ^ 5 ^ 7` in integer bitwise operations?",
+    codeSnippet: "int val = 5 ^ 5 ^ 7;",
+    options: [
+      { id: "A", text: "0" },
+      { id: "B", text: "5" },
+      { id: "C", text: "7" },
+      { id: "D", text: "17" }
+    ],
+    correctAnswer: "C",
+    explanation: "XOR is associative and self-inverting: `x ^ x = 0` and `0 ^ y = y`. Thus `5 ^ 5 ^ 7 = 0 ^ 7 = 7`."
+  },
+  {
+    questionId: 15,
+    category: "C++",
     difficulty: "Medium",
-    question: "What is the output of `0.1 + 0.2 === 0.3` in standard IEEE 754 floating point arithmetic?",
-    codeSnippet: "console.log(0.1 + 0.2 === 0.3);",
+    question: "What is the size of the following C++ struct on a standard 64-bit architecture with default structure alignment?",
+    codeSnippet: "struct Node {\n    char c;    // 1 byte\n    int x;     // 4 bytes\n    short s;   // 2 bytes\n};",
+    options: [
+      { id: "A", text: "7 bytes" },
+      { id: "B", text: "8 bytes" },
+      { id: "C", text: "12 bytes" },
+      { id: "D", text: "16 bytes" }
+    ],
+    correctAnswer: "C",
+    explanation: "`c` takes 1 byte + 3 bytes padding (for int alignment). `x` takes 4 bytes. `s` takes 2 bytes + 2 bytes padding to match struct alignment (4 bytes). Total: 12 bytes."
+  },
+  {
+    questionId: 16,
+    category: "Data Structures",
+    difficulty: "Medium",
+    question: "In a min-heap stored as a 0-indexed array, where is the left child of node at index `i` located?",
+    codeSnippet: null,
+    options: [
+      { id: "A", text: "2 * i" },
+      { id: "B", text: "2 * i + 1" },
+      { id: "C", text: "2 * i + 2" },
+      { id: "D", text: "i / 2" }
+    ],
+    correctAnswer: "B",
+    explanation: "In zero-based binary heap array indexing, left child is `2*i + 1` and right child is `2*i + 2`."
+  },
+  {
+    questionId: 17,
+    category: "JavaScript",
+    difficulty: "Hard",
+    question: "What evaluates when comparing an array with an empty string in JavaScript?",
+    codeSnippet: "console.log([] == ![]);",
     options: [
       { id: "A", text: "true" },
       { id: "B", text: "false" },
-      { id: "C", text: "undefined" },
+      { id: "C", text: "TypeError" },
       { id: "D", text: "NaN" }
     ],
-    correctAnswer: "B",
-    explanation: "Binary floating point representation produces precision rounding (0.30000000000000004)."
+    correctAnswer: "A",
+    explanation: "`![]` evaluates to `false`. Then `[] == false` converts `[]` to `\"\"` and both to `0`, resulting in `0 == 0` which is `true`."
   },
   {
-    id: 22,
-    questionId: 22,
-    category: "Data Structures",
-    difficulty: "Hard",
-    question: "In a min-heap with N elements, what is the time complexity to find the maximum element?",
+    questionId: 18,
+    category: "Algorithms",
+    difficulty: "Medium",
+    question: "Which algorithmic paradigm is applied by Dijkstra's Single-Source Shortest Path algorithm?",
     codeSnippet: null,
     options: [
-      { id: "A", text: "O(1)" },
-      { id: "B", text: "O(log N)" },
-      { id: "C", text: "O(N)" },
+      { id: "A", text: "Dynamic Programming" },
+      { id: "B", text: "Greedy Strategy" },
+      { id: "C", text: "Divide and Conquer" },
+      { id: "D", text: "Backtracking" }
+    ],
+    correctAnswer: "B",
+    explanation: "Dijkstra iteratively extracts the unvisited vertex with minimal tentative distance using a greedy selection step."
+  },
+  {
+    questionId: 19,
+    category: "Python",
+    difficulty: "Easy",
+    question: "What is printed by this string slicing snippet in Python?",
+    codeSnippet: "s = \"BLINDCODE\"\nprint(s[-4:])",
+    options: [
+      { id: "A", text: "\"BLIN\"" },
+      { id: "B", text: "\"CODE\"" },
+      { id: "C", text: "\"DCODE\"" },
+      { id: "D", text: "\"EDOC\"" }
+    ],
+    correctAnswer: "B",
+    explanation: "Negative slice index `-4:` extracts the last 4 characters of the string: \"CODE\"."
+  },
+  {
+    questionId: 20,
+    category: "SQL & DB Logic",
+    difficulty: "Medium",
+    question: "How does `COUNT(*)` differ from `COUNT(column_name)` in standard SQL?",
+    codeSnippet: "SELECT COUNT(*), COUNT(bonus) FROM Employees;",
+    options: [
+      { id: "A", text: "They always return the exact same count" },
+      { id: "B", text: "COUNT(*) counts all rows including NULLs; COUNT(column) ignores NULL values in that column" },
+      { id: "C", text: "COUNT(column) counts distinct values only" },
+      { id: "D", text: "COUNT(*) throws an error if table has NULL keys" }
+    ],
+    correctAnswer: "B",
+    explanation: "`COUNT(*)` computes the total row count of the table regardless of column content, whereas `COUNT(column)` omits null values."
+  },
+  {
+    questionId: 21,
+    category: "Recursion",
+    difficulty: "Hard",
+    question: "What is the time complexity of the standard recursive Fibonacci without memoization?",
+    codeSnippet: "int fib(int n) {\n    if (n <= 1) return n;\n    return fib(n - 1) + fib(n - 2);\n}",
+    options: [
+      { id: "A", text: "O(N)" },
+      { id: "B", text: "O(N²)" },
+      { id: "C", text: "O(2ᴺ)" },
       { id: "D", text: "O(N log N)" }
     ],
     correctAnswer: "C",
-    explanation: "The maximum element is situated among the leaf nodes, requiring an O(N) scan."
+    explanation: "Each invocation branches into two recursive calls, creating a recursion tree with O(2^N) total calls."
   },
   {
-    id: 23,
-    questionId: 23,
+    questionId: 22,
     category: "Object-Oriented Programming",
-    difficulty: "Easy",
-    question: "Which OOP concept describes wrapping data and code into a single unit while restricting direct outside access?",
-    codeSnippet: null,
-    options: [
-      { id: "A", text: "Polymorphism" },
-      { id: "B", text: "Inheritance" },
-      { id: "C", text: "Encapsulation" },
-      { id: "D", text: "Abstraction" }
-    ],
-    correctAnswer: "C",
-    explanation: "Encapsulation binds data and functions together."
-  },
-  {
-    id: 24,
-    questionId: 24,
-    category: "Algorithms",
     difficulty: "Medium",
-    question: "Which graph traversal algorithm uses a Queue and visits nodes level-by-level?",
+    question: "What occurs when a derived class declares a method with the identical signature as a virtual method in its base class?",
     codeSnippet: null,
     options: [
-      { id: "A", text: "Depth-First Search (DFS)" },
-      { id: "B", text: "Breadth-First Search (BFS)" },
-      { id: "C", text: "Dijkstra's Algorithm with Priority Queue" },
-      { id: "D", text: "Topological Sort" }
+      { id: "A", text: "Method Overloading" },
+      { id: "B", text: "Method Overriding (Runtime Polymorphism)" },
+      { id: "C", text: "Compile-time abstraction error" },
+      { id: "D", text: "Encapsulation breach" }
     ],
     correctAnswer: "B",
-    explanation: "BFS explores neighbor vertices level-by-level using a FIFO Queue."
+    explanation: "Overriding a virtual method in a derived class enables dynamic dispatch (runtime polymorphism) via the vtable."
   },
   {
-    id: 25,
+    questionId: 23,
+    category: "Bitwise Logic",
+    difficulty: "Hard",
+    question: "What does the expression `x ^ (x >> 1)` produce when computing on a binary integer?",
+    codeSnippet: "unsigned int g = x ^ (x >> 1);",
+    options: [
+      { id: "A", text: "Reverses all bits of x" },
+      { id: "B", text: "Converts binary to its corresponding Gray code representation" },
+      { id: "C", text: "Counts total set bits" },
+      { id: "D", text: "Finds the two's complement" }
+    ],
+    correctAnswer: "B",
+    explanation: "The formula `x ^ (x >> 1)` maps any integer to its Gray code equivalent, where consecutive values differ by exactly one bit."
+  },
+  {
+    questionId: 24,
+    category: "Data Structures",
+    difficulty: "Easy",
+    question: "Which traversal of a Binary Search Tree (BST) produces sorted output in ascending order?",
+    codeSnippet: null,
+    options: [
+      { id: "A", text: "Pre-order (Root -> Left -> Right)" },
+      { id: "B", text: "In-order (Left -> Root -> Right)" },
+      { id: "C", text: "Post-order (Left -> Right -> Root)" },
+      { id: "D", text: "Level-order (BFS)" }
+    ],
+    correctAnswer: "B",
+    explanation: "In-order traversal visits nodes in `Left <= Root <= Right` order, yielding elements in monotonically increasing sorted order."
+  },
+  {
     questionId: 25,
     category: "Logic & Code Reasoning",
     difficulty: "Hard",
@@ -399,203 +379,76 @@ export const INITIAL_QUESTIONS = [
       { id: "D", text: "`+=` raises an immutable error" }
     ],
     correctAnswer: "A",
-    explanation: "In Python, `+=` calls `__iadd__()` mutating the list in-place, while binary `+` creates a new list object."
+    explanation: "`+=` on a Python list invokes `__iadd__()` which extends the list in-place (mutating `x`). `y = y + [...]` builds a new object and rebinds `y`."
   }
 ];
 
+/**
+ * Idempotent Production Database Seeder
+ * Safe: Never deletes existing students, attempts, answers, or scores on server restart.
+ * Seeds only missing core assets (Admin, Config, and 25 Questions).
+ */
 export const seedDatabase = async () => {
-  // Populate memoryStore with questions
-  INITIAL_QUESTIONS.forEach((q) => {
-    memoryStore.questions.set(String(q.questionId), q);
-  });
+  try {
+    // 1. Seed Questions (Exactly 25 questions, idempotent)
+    const existingQuestionCount = await Question.countDocuments();
+    if (existingQuestionCount === 0) {
+      console.log('🌱 [SEED] Inserting 25 curated assessment questions into MongoDB...');
+      await Question.insertMany(INITIAL_QUESTIONS);
+      console.log('✅ [SEED] Exactly 25 questions successfully persisted.');
+    } else {
+      console.log(`ℹ️ [SEED] Questions collection verified (${existingQuestionCount} questions). Preserving database records.`);
+    }
 
-  // Seed default admin
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash('Admin@2026', salt);
+    // 2. Seed Default Admin Account (Idempotent)
+    const adminEmail = 'admin@cse.techforce.edu';
+    const existingAdmin = await Admin.findOne({ email: adminEmail });
+    if (!existingAdmin) {
+      console.log('🌱 [SEED] Initializing default Event Administrator...');
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash('Admin@2026', salt);
+      await Admin.create({
+        name: 'TECH FORCE Convenor',
+        email: adminEmail,
+        password: hashedPassword,
+        role: 'EVENT_ADMIN',
+      });
+      console.log(`✅ [SEED] Event Admin registered (${adminEmail} / Admin@2026).`);
+    } else {
+      console.log(`ℹ️ [SEED] Event Admin account verified (${adminEmail}).`);
+    }
 
-  const defaultAdmin = {
-    id: 'admin-001',
-    name: 'TECH FORCE Convenor',
-    email: 'admin@cse.techforce.edu',
-    password: hashedPassword,
-    role: 'SUPER_ADMIN',
-  };
-  memoryStore.admins.set('admin-001', defaultAdmin);
+    // 3. Seed Event Configuration (Idempotent)
+    const eventId = 'BLIND_CODING_2026';
+    const existingConfig = await EventConfig.findOne({ eventId });
+    if (!existingConfig) {
+      console.log('🌱 [SEED] Initializing official event parameters in MongoDB...');
+      await EventConfig.create({
+        eventId,
+        eventTitle: 'BLIND CODING',
+        quizDurationMinutes: 60,
+        totalQuestions: 25,
+        eventStartAt: null,
+        eventEndAt: null,
+        quizAvailability: 'ACTIVE',
+        maxActivityWarnings: 2,
+        autoSubmitOnWarningLimit: true,
+        fullscreenRequired: true,
+        tabSwitchMonitoring: true,
+        passingPercentage: 50,
+        allowAnswerChange: true,
+      });
+      console.log('✅ [SEED] Event configuration created in MongoDB.');
+    } else {
+      console.log(`ℹ️ [SEED] Event configuration active for: "${existingConfig.eventTitle}".`);
+    }
 
-  // Seed mock participant attempts for rich Admin dashboard
-  const mockStudents = [
-    {
-      id: 'stud-001',
-      name: 'Aarav Sharma',
-      registerNumber: '953710',
-      department: 'Computer Science and Engineering',
-      year: 'IV Year',
-      class: 'IV CSE A',
-      section: 'A',
-      score: 25,
-      percentage: 100,
-      timeTakenSeconds: 2340,
-      timeFormatted: '39:00',
-      status: 'COMPLETED',
-      submittedAt: '2026-08-24T09:45:00.000Z',
-    },
-    {
-      id: 'stud-002',
-      name: 'K. V. Hari Krishnan',
-      registerNumber: '953711',
-      department: 'Computer Science and Engineering',
-      year: 'IV Year',
-      class: 'IV CSE B',
-      section: 'B',
-      score: 24,
-      percentage: 96,
-      timeTakenSeconds: 2480,
-      timeFormatted: '41:20',
-      status: 'COMPLETED',
-      submittedAt: '2026-08-24T09:50:00.000Z',
-    },
-    {
-      id: 'stud-003',
-      name: 'Sneha Reddy',
-      registerNumber: '953712',
-      department: 'Computer Science and Engineering',
-      year: 'III Year',
-      class: 'III CSE A',
-      section: 'A',
-      score: 24,
-      percentage: 96,
-      timeTakenSeconds: 2750,
-      timeFormatted: '45:50',
-      status: 'COMPLETED',
-      submittedAt: '2026-08-24T09:55:00.000Z',
-    },
-    {
-      id: 'stud-004',
-      name: 'Vigneshwaran M',
-      registerNumber: '953713',
-      department: 'Computer Science and Engineering',
-      year: 'IV Year',
-      class: 'IV CSE C',
-      section: 'C',
-      score: 23,
-      percentage: 92,
-      timeTakenSeconds: 2510,
-      timeFormatted: '41:50',
-      status: 'COMPLETED',
-      submittedAt: '2026-08-24T09:52:00.000Z',
-    },
-    {
-      id: 'stud-005',
-      name: 'Priyanka Nair',
-      registerNumber: '953714',
-      department: 'Computer Science and Engineering',
-      year: 'II Year',
-      class: 'II CSE B',
-      section: 'B',
-      score: 22,
-      percentage: 88,
-      timeTakenSeconds: 2890,
-      timeFormatted: '48:10',
-      status: 'COMPLETED',
-      submittedAt: '2026-08-24T10:01:00.000Z',
-    },
-    {
-      id: 'stud-006',
-      name: 'Karthik S',
-      registerNumber: '953715',
-      department: 'Computer Science and Engineering',
-      year: 'III Year',
-      class: 'III CSE B',
-      section: 'B',
-      score: 21,
-      percentage: 84,
-      timeTakenSeconds: 2950,
-      timeFormatted: '49:10',
-      status: 'COMPLETED',
-      submittedAt: '2026-08-24T10:04:00.000Z',
-    },
-    {
-      id: 'stud-007',
-      name: 'Ananya Iyer',
-      registerNumber: '953716',
-      department: 'Computer Science and Engineering',
-      year: 'III Year',
-      class: 'III CSE A',
-      section: 'A',
-      score: 20,
-      percentage: 80,
-      timeTakenSeconds: 3100,
-      timeFormatted: '51:40',
-      status: 'COMPLETED',
-      submittedAt: '2026-08-24T10:08:00.000Z',
-    },
-    {
-      id: 'stud-008',
-      name: 'Rohan Chatterjee',
-      registerNumber: '953717',
-      department: 'Computer Science and Engineering',
-      year: 'II Year',
-      class: 'II CSE A',
-      section: 'A',
-      score: null,
-      percentage: null,
-      timeTakenSeconds: null,
-      timeFormatted: '--:--',
-      status: 'IN_PROGRESS',
-      startedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    },
-  ];
-
-  mockStudents.forEach((st) => {
-    memoryStore.students.set(st.registerNumber, {
-      id: st.id,
-      name: st.name,
-      registerNumber: st.registerNumber,
-      department: st.department,
-      year: st.year,
-      class: st.class,
-      section: st.section,
-    });
-
-    memoryStore.quizAttempts.set(st.registerNumber, {
-      id: `attempt-${st.registerNumber}`,
-      studentId: st.id,
-      studentName: st.name,
-      registerNumber: st.registerNumber,
-      department: st.department,
-      year: st.year,
-      class: st.class,
-      section: st.section,
-      answers: {},
-      startedAt: st.startedAt || new Date(Date.now() - 3600 * 1000).toISOString(),
-      submittedAt: st.submittedAt || null,
-      timeTakenSeconds: st.timeTakenSeconds,
-      timeFormatted: st.timeFormatted,
-      score: st.score,
-      totalQuestions: 25,
-      percentage: st.percentage,
-      status: st.status,
-      tabSwitchCount: st.status === 'COMPLETED' ? (Math.random() > 0.5 ? 1 : 0) : 0,
-      fullscreenExitCount: 0,
-      totalWarnings: st.status === 'COMPLETED' ? (Math.random() > 0.5 ? 1 : 0) : 0,
-      activityLogs: [
-        {
-          type: 'QUIZ_STARTED',
-          timestamp: st.startedAt || new Date(Date.now() - 3600 * 1000).toISOString(),
-          details: 'Quiz session initiated',
-        },
-        ...(st.status === 'COMPLETED'
-          ? [
-              {
-                type: 'QUIZ_SUBMITTED',
-                timestamp: st.submittedAt || new Date().toISOString(),
-                details: 'Assessment finalized and submitted',
-              },
-            ]
-          : []),
-      ],
-    });
-  });
-
-  console.log('🌱 [SEED] 25 Questions, Default Admin (admin@cse.techforce.edu / Admin@2026), and Initial Records Initialized.');
+    // Check student count to confirm existing student records persist
+    const studentCount = await Student.countDocuments();
+    const attemptCount = await QuizAttempt.countDocuments();
+    console.log(`📊 [MONGODB STATUS] Verified: ${studentCount} Registered Students, ${attemptCount} Official Attempts.\n`);
+  } catch (error) {
+    console.error('❌ [SEED ERROR] Failed during database initialization:', error);
+    throw error;
+  }
 };

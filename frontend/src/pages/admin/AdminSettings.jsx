@@ -100,12 +100,12 @@ export const AdminSettings = () => {
     }
   };
 
-  const handleResetDemo = () => {
-    if (window.confirm('Reset all demo attempts, participant records, and active sessions in localStorage?')) {
+  const handleResetSession = () => {
+    if (window.confirm('Clear active browser session cache, participant credentials, and locally stored assessment state?')) {
       resetQuizState();
       localStorage.removeItem('blindcode_student');
       localStorage.removeItem('blindcode_submissions');
-      addToast('Demo database and localStorage have been reset!', 'info', 4000);
+      addToast('Local browser session state cleared.', 'info', 4000);
     }
   };
 
@@ -290,27 +290,27 @@ export const AdminSettings = () => {
         </Card>
       </form>
 
-      {/* Danger Zone / Demo Data Reset */}
+      {/* Browser Session Cache Reset */}
       <Card variant="ivory" className="p-6 border-2 border-red-200 bg-red-50/40">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h4 className="font-comfortaa font-bold text-sm text-red-900 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-red-600" />
-              Demo Data Reset
+              Local Session Cache Reset
             </h4>
             <p className="text-xs text-red-700/80 mt-1 max-w-md">
-              Clear your current participant session, test answers, and localStorage quiz state to test the student registration flow from scratch.
+              Clear active participant session data, cached answers, and browser state for local workstation re-testing.
             </p>
           </div>
 
           <Button
             variant="danger"
             size="sm"
-            onClick={handleResetDemo}
+            onClick={handleResetSession}
             icon={RotateCcw}
             className="text-xs font-semibold whitespace-nowrap"
           >
-            Reset Demo State
+            Reset Session State
           </Button>
         </div>
       </Card>

@@ -1,10 +1,11 @@
 /**
  * BLINDCODE Frontend API Client
- * Connects directly to the Express backend (http://localhost:5000/api)
- * with robust client-side fallback resilience.
+ * Connects to the Express backend (configured via VITE_API_URL or relative /api)
+ * Strict production standard: NO fake success fallbacks, NO invented scores.
+ * The backend remains the single source of truth.
  */
 
-const API_BASE_URL = 'http://localhost:5000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const api = {
   // 1. Student Registration
@@ -18,11 +19,10 @@ export const api = {
       const data = await res.json();
       return data;
     } catch (err) {
-      console.warn('Backend API offline, using local store:', err);
+      console.error('Backend connection error during registration:', err);
       return {
-        success: true,
-        student: studentData,
-        attempt: { id: `local-${studentData.registerNumber}`, status: 'NOT_STARTED' },
+        success: false,
+        message: 'Unable to reach the assessment server. Please check your network connection and verify the server is running.',
       };
     }
   },
@@ -33,7 +33,8 @@ export const api = {
       const res = await fetch(`${API_BASE_URL}/students/check/${encodeURIComponent(registerNumber)}`);
       return await res.json();
     } catch (err) {
-      return { success: true, exists: false, status: 'NOT_REGISTERED' };
+      console.error('Error checking register number:', err);
+      return { success: false, message: 'Could not reach server to verify registration status.' };
     }
   },
 
@@ -47,20 +48,15 @@ export const api = {
       });
       return await res.json();
     } catch (err) {
+      console.error('Error starting quiz on server:', err);
       return {
-        success: true,
-        startedAt: new Date().toISOString(),
-        remainingSeconds: 3600,
-        savedAnswers: {},
-        tabSwitchCount: 0,
-        fullscreenExitCount: 0,
-        totalWarnings: 0,
-        maxWarnings: 2,
+        success: false,
+        message: 'Could not connect to the assessment server to start your quiz. Please ensure the server is active.',
       };
     }
   },
 
-  // 4. Fetch Sanitized Questions (Ordered for student if registerNumber passed)
+  // 4. Fetch Sanitized Questions (Ordered per student if registerNumber passed)
   async getQuestions(registerNumber = null) {
     try {
       const url = registerNumber
@@ -68,14 +64,14 @@ export const api = {
         : `${API_BASE_URL}/quiz/questions`;
       const res = await fetch(url);
       const data = await res.json();
-      if (data.success && data.questions) {
+      if (data && data.success && data.questions) {
         return data.questions;
       }
+      return null;
     } catch (err) {
-      console.warn('Questions fetch fallback to local questions data:', err);
+      console.error('Failed to retrieve assessment questions from server:', err);
+      return null;
     }
-    const { QUIZ_QUESTIONS } = await import('../data/questions.js');
-    return QUIZ_QUESTIONS;
   },
 
   // 5. Save Single Answer
@@ -88,7 +84,8 @@ export const api = {
       });
       return await res.json();
     } catch (err) {
-      return { success: false, error: err.message };
+      console.error('Error saving answer to server:', err);
+      return { success: false, message: 'Network error saving answer to server.' };
     }
   },
 
@@ -102,21 +99,15 @@ export const api = {
       });
       return await res.json();
     } catch (err) {
-      console.warn('Activity logging fallback:', err);
+      console.warn('Activity logging network issue:', err);
       return {
-        success: true,
-        tabSwitchCount: 0,
-        fullscreenExitCount: 0,
-        totalWarnings: 0,
-        maxWarnings: 2,
-        maxActivityWarnings: 2,
-        autoSubmitRequired: false,
-        shouldAutoSubmit: false,
+        success: false,
+        message: 'Network issue logging activity telemetry to server.',
       };
     }
   },
 
-  // 7. Submit Assessment (Server computes score)
+  // 7. Submit Assessment (Server computes score strictly — NO FAKE FALLBACKS)
   async submitQuiz(registerNumber, isAutoSubmit = false) {
     try {
       const res = await fetch(`${API_BASE_URL}/quiz/submit`, {
@@ -124,17 +115,13 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ registerNumber, isAutoSubmit }),
       });
-      return await res.json();
+      const data = await res.json();
+      return data;
     } catch (err) {
+      console.error('Submission failed due to network error:', err);
       return {
-        success: true,
-        result: {
-          score: 22,
-          total: 25,
-          percentage: 88,
-          performanceTier: 'GREAT WORK',
-          timeFormatted: '42:15',
-        },
+        success: false,
+        message: 'Submission network error. Your answers are saved locally. Please retry submission.',
       };
     }
   },
@@ -145,7 +132,8 @@ export const api = {
       const res = await fetch(`${API_BASE_URL}/quiz/result/${encodeURIComponent(registerNumber)}`);
       return await res.json();
     } catch (err) {
-      return { success: false };
+      console.error('Error retrieving candidate result:', err);
+      return { success: false, message: 'Unable to retrieve assessment result.' };
     }
   },
 
@@ -154,11 +142,11 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE_URL}/quiz/config`);
       const data = await res.json();
-      if (data.success && data.config) {
+      if (data && data.success && data.config) {
         return data.config;
       }
     } catch (err) {
-      console.warn('Config fetch fallback:', err);
+      console.warn('Config fetch error, using institutional defaults:', err);
     }
     return {
       eventTitle: 'BLIND CODING',
@@ -254,6 +242,14 @@ export const api = {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(settingsPayload),
+    });
+    return await res.json();
+  },
+
+  // Admin Detailed Participant Review
+  async getParticipantReview(token, participantId) {
+    const res = await fetch(`${API_BASE_URL}/admin/participants/${participantId}/review`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
     return await res.json();
   },

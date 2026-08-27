@@ -1,42 +1,35 @@
-import { memoryStore } from '../config/db.js';
-import { INITIAL_QUESTIONS } from '../utils/seedData.js';
+import { Question } from '../models/Question.js';
+import { QuizAttempt } from '../models/QuizAttempt.js';
+import { EventConfig } from '../models/EventConfig.js';
 import { fisherYatesShuffle } from '../utils/shuffle.js';
 
 const DEFAULT_QUIZ_DURATION_SECONDS = 60 * 60; // 60 minutes
 const DEFAULT_TOTAL_QUESTIONS = 25;
 
-// Helper to get active event configuration
-export const getActiveConfig = () => {
-  const config = memoryStore.eventConfig || {
-    eventTitle: 'BLIND CODING',
-    quizDurationMinutes: 60,
-    totalQuestions: 25,
-    eventStartAt: null,
-    eventEndAt: null,
-    quizAvailability: 'ACTIVE',
-    maxActivityWarnings: 2,
-    autoSubmitOnWarningLimit: true,
-    fullscreenRequired: true,
-    tabSwitchMonitoring: true,
-    passingPercentage: 50,
-    allowAnswerChange: true,
-  };
+// Helper to get active event configuration from MongoDB
+export const getActiveConfig = async () => {
+  let config = await EventConfig.findOne({ eventId: 'BLIND_CODING_2026' });
+  if (!config) {
+    config = await EventConfig.create({
+      eventId: 'BLIND_CODING_2026',
+      eventTitle: 'BLIND CODING',
+      quizDurationMinutes: 60,
+      totalQuestions: 25,
+      eventStartAt: null,
+      eventEndAt: null,
+      quizAvailability: 'ACTIVE',
+      maxActivityWarnings: 2,
+      autoSubmitOnWarningLimit: true,
+      fullscreenRequired: true,
+      tabSwitchMonitoring: true,
+      passingPercentage: 50,
+      allowAnswerChange: true,
+    });
+  }
   return config;
 };
 
-// Helper to get master question map
-const getMasterQuestionMap = () => {
-  const masterList = Array.from(memoryStore.questions.values());
-  const source = masterList.length > 0 ? masterList : INITIAL_QUESTIONS;
-  const map = new Map();
-  source.forEach((q) => {
-    const qId = String(q.questionId || q.id);
-    map.set(qId, q);
-  });
-  return map;
-};
-
-// 1. Start Quiz with Fisher-Yates Question & Option Shuffling (Set Once)
+// 1. Start Quiz with Fisher-Yates Question & Option Shuffling (Set Once in MongoDB)
 export const startQuiz = async (req, res) => {
   try {
     const { registerNumber } = req.body;
@@ -44,7 +37,7 @@ export const startQuiz = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Register Number required to start challenge.' });
     }
 
-    const config = getActiveConfig();
+    const config = await getActiveConfig();
     const now = new Date();
 
     // Event Availability Check
@@ -72,8 +65,9 @@ export const startQuiz = async (req, res) => {
       });
     }
 
-    const regNoClean = registerNumber.trim();
-    const attempt = memoryStore.quizAttempts.get(regNoClean);
+    const regNoClean = registerNumber.trim().toUpperCase();
+    const eventId = 'BLIND_CODING_2026';
+    const attempt = await QuizAttempt.findOne({ registerNumber: regNoClean, eventId });
 
     if (!attempt) {
       return res.status(404).json({ success: false, message: 'Student registration not found. Please register first.' });
@@ -82,264 +76,279 @@ export const startQuiz = async (req, res) => {
     if (attempt.status === 'COMPLETED') {
       return res.status(403).json({
         success: false,
-        message: 'This attempt has already been submitted and finalized.',
+        message: 'You have already submitted your Blind Coding assessment. Multiple attempts are prohibited.',
         status: 'COMPLETED',
+        score: attempt.score,
+        total: attempt.totalQuestions,
+        percentage: attempt.percentage,
+        submittedAt: attempt.submittedAt,
       });
     }
 
     const durationSeconds = (config.quizDurationMinutes || 60) * 60;
-    const totalQuestionsConfig = config.totalQuestions || DEFAULT_TOTAL_QUESTIONS;
-    const masterQuestionMap = getMasterQuestionMap();
+    const allQuestions = await Question.find().sort({ questionId: 1 });
+    const questionMap = new Map();
+    allQuestions.forEach((q) => questionMap.set(String(q.questionId), q));
 
-    // FEATURE 1: Generate Shuffled Question & Option Order ONCE per attempt
-    if (!attempt.assignedQuestions || attempt.assignedQuestions.length === 0) {
-      const allMasterQuestions = Array.from(masterQuestionMap.values());
-      const selectedPool = allMasterQuestions.slice(0, totalQuestionsConfig);
+    // Case A: Continuing existing ongoing session
+    if (attempt.status === 'IN_PROGRESS' && attempt.startedAt) {
+      const elapsedSeconds = Math.floor((now.getTime() - new Date(attempt.startedAt).getTime()) / 1000);
+      const remainingSeconds = Math.max(0, durationSeconds - elapsedSeconds);
 
-      // Fisher-Yates Question Shuffle
-      const shuffledPool = fisherYatesShuffle(selectedPool);
+      // Reconstruct assigned questions in saved randomized order
+      const clientQuestions = (attempt.assignedQuestions || [])
+        .map((assigned, idx) => {
+          const original = questionMap.get(String(assigned.questionId));
+          if (!original) return null;
 
-      // Fisher-Yates Option Shuffle per Question
-      attempt.assignedQuestions = shuffledPool.map((q) => {
-        const optionIds = q.options.map((opt) => opt.id);
-        const shuffledOptionOrder = fisherYatesShuffle(optionIds);
-        return {
-          questionId: q.questionId || q.id,
-          optionOrder: shuffledOptionOrder,
-        };
+          const optionsMap = new Map(original.options.map((o) => [o.id, o]));
+          const orderedOptions = assigned.optionOrder
+            .map((optId) => optionsMap.get(optId))
+            .filter(Boolean)
+            .map((o) => ({ id: o.id, text: o.text }));
+
+          return {
+            id: original.questionId,
+            questionId: original.questionId,
+            displayOrder: idx + 1,
+            category: original.category,
+            difficulty: original.difficulty,
+            question: original.question,
+            codeSnippet: original.codeSnippet,
+            options: orderedOptions,
+          };
+        })
+        .filter(Boolean);
+
+      const savedAnswersObj = attempt.answers instanceof Map
+        ? Object.fromEntries(attempt.answers)
+        : attempt.answers || {};
+
+      return res.json({
+        success: true,
+        message: 'Resuming ongoing assessment.',
+        startedAt: attempt.startedAt,
+        expiresAt: attempt.expiresAt,
+        durationSeconds,
+        remainingSeconds,
+        questions: clientQuestions,
+        totalQuestions: clientQuestions.length,
+        savedAnswers: savedAnswersObj,
+        tabSwitchCount: attempt.tabSwitchCount || 0,
+        fullscreenExitCount: attempt.fullscreenExitCount || 0,
+        totalWarnings: attempt.totalWarnings || 0,
+        maxWarnings: config.maxActivityWarnings || 2,
+        isResume: true,
       });
     }
 
-    if (!attempt.startedAt) {
-      attempt.startedAt = now.toISOString();
-      if (!attempt.activityLogs) attempt.activityLogs = [];
-      attempt.activityLogs.push({
-        type: 'QUIZ_STARTED',
-        timestamp: now.toISOString(),
-        details: 'Quiz session initiated by candidate',
-      });
-    }
+    // Case B: First Time Starting Assessment
+    const startedAt = now;
+    const expiresAt = new Date(startedAt.getTime() + durationSeconds * 1000);
 
-    attempt.status = 'IN_PROGRESS';
-    attempt.tabSwitchCount = attempt.tabSwitchCount || 0;
-    attempt.fullscreenExitCount = attempt.fullscreenExitCount || 0;
-    attempt.totalWarnings = (attempt.tabSwitchCount || 0) + (attempt.fullscreenExitCount || 0);
+    // Shuffle questions with Fisher-Yates
+    const shuffledQuestions = fisherYatesShuffle([...allQuestions]);
 
-    memoryStore.quizAttempts.set(regNoClean, attempt);
+    const assignedQuestions = [];
+    const clientQuestions = [];
 
-    // Calculate remaining seconds based on server startedAt
-    const elapsedSeconds = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
-    const remainingSeconds = Math.max(0, durationSeconds - elapsedSeconds);
+    shuffledQuestions.forEach((q, idx) => {
+      // Shuffle options for this candidate
+      const shuffledOptions = fisherYatesShuffle([...q.options]);
+      const optionOrder = shuffledOptions.map((o) => o.id);
 
-    // Build the candidate-specific sanitized questions array in assigned order
-    const candidateQuestions = attempt.assignedQuestions.map((aq) => {
-      const q = masterQuestionMap.get(String(aq.questionId));
-      const orderedOptions = aq.optionOrder.map((optId) => {
-        const found = q.options.find((o) => String(o.id) === String(optId));
-        return {
-          id: found ? found.id : optId,
-          text: found ? found.text : '',
-        };
+      assignedQuestions.push({
+        questionId: q.questionId,
+        displayOrder: idx + 1,
+        optionOrder,
       });
 
-      return {
-        id: q.questionId || q.id,
-        questionId: q.questionId || q.id,
+      clientQuestions.push({
+        id: q.questionId,
+        questionId: q.questionId,
+        displayOrder: idx + 1,
         category: q.category,
         difficulty: q.difficulty,
         question: q.question,
         codeSnippet: q.codeSnippet,
-        options: orderedOptions,
-      };
+        options: shuffledOptions.map((o) => ({ id: o.id, text: o.text })),
+      });
     });
 
-    const maxWarnings = config.maxActivityWarnings || 2;
+    attempt.status = 'IN_PROGRESS';
+    attempt.startedAt = startedAt;
+    attempt.expiresAt = expiresAt;
+    attempt.assignedQuestions = assignedQuestions;
+    if (!attempt.activityLogs) attempt.activityLogs = [];
+    attempt.activityLogs.push({
+      type: 'QUIZ_STARTED',
+      timestamp: startedAt,
+      details: 'Candidate initiated official assessment timer',
+    });
+
+    await attempt.save();
 
     return res.json({
       success: true,
       message: 'Assessment countdown started.',
       startedAt: attempt.startedAt,
-      remainingSeconds,
+      expiresAt: attempt.expiresAt,
       durationSeconds,
-      savedAnswers: attempt.answers || {},
-      questions: candidateQuestions,
-      tabSwitchCount: attempt.tabSwitchCount,
-      fullscreenExitCount: attempt.fullscreenExitCount,
-      totalWarnings: attempt.totalWarnings,
-      maxWarnings,
-      config: {
-        eventTitle: config.eventTitle,
-        totalQuestions: candidateQuestions.length,
-        fullscreenRequired: config.fullscreenRequired !== false,
-        tabSwitchMonitoring: config.tabSwitchMonitoring !== false,
-        maxActivityWarnings: maxWarnings,
-      },
+      remainingSeconds: durationSeconds,
+      questions: clientQuestions,
+      totalQuestions: clientQuestions.length,
+      savedAnswers: {},
+      tabSwitchCount: 0,
+      fullscreenExitCount: 0,
+      totalWarnings: 0,
+      maxWarnings: config.maxActivityWarnings || 2,
+      isResume: false,
     });
   } catch (error) {
-    console.error('Error starting quiz:', error);
-    return res.status(500).json({ success: false, message: 'Failed to initiate quiz countdown on server.' });
+    console.error('Error starting quiz in MongoDB:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error initializing assessment.' });
   }
 };
 
-// 2. Return Sanitized Questions (Ordered per student if registerNumber given)
+// 2. Fetch Questions (Sanitized: NO answers or explanations leaked to candidate)
 export const getQuestions = async (req, res) => {
   try {
     const { registerNumber } = req.query;
-    const config = getActiveConfig();
-    const masterQuestionMap = getMasterQuestionMap();
-
-    let finalQuestions = [];
+    const allQuestions = await Question.find().sort({ questionId: 1 });
 
     if (registerNumber) {
-      const regNoClean = registerNumber.trim();
-      const attempt = memoryStore.quizAttempts.get(regNoClean);
+      const regNoClean = registerNumber.trim().toUpperCase();
+      const eventId = 'BLIND_CODING_2026';
+      const attempt = await QuizAttempt.findOne({ registerNumber: regNoClean, eventId });
 
       if (attempt && attempt.assignedQuestions && attempt.assignedQuestions.length > 0) {
-        finalQuestions = attempt.assignedQuestions.map((aq) => {
-          const q = masterQuestionMap.get(String(aq.questionId));
-          const orderedOptions = aq.optionOrder.map((optId) => {
-            const found = q.options.find((o) => String(o.id) === String(optId));
-            return {
-              id: found ? found.id : optId,
-              text: found ? found.text : '',
-            };
-          });
+        const questionMap = new Map();
+        allQuestions.forEach((q) => questionMap.set(String(q.questionId), q));
 
-          return {
-            id: q.questionId || q.id,
-            questionId: q.questionId || q.id,
-            category: q.category,
-            difficulty: q.difficulty,
-            question: q.question,
-            codeSnippet: q.codeSnippet,
-            options: orderedOptions,
-          };
-        });
+        const ordered = attempt.assignedQuestions
+          .map((assigned, idx) => {
+            const original = questionMap.get(String(assigned.questionId));
+            if (!original) return null;
+
+            const optionsMap = new Map(original.options.map((o) => [o.id, o]));
+            const orderedOptions = assigned.optionOrder
+              .map((optId) => optionsMap.get(optId))
+              .filter(Boolean)
+              .map((o) => ({ id: o.id, text: o.text }));
+
+            return {
+              id: original.questionId,
+              questionId: original.questionId,
+              displayOrder: idx + 1,
+              category: original.category,
+              difficulty: original.difficulty,
+              question: original.question,
+              codeSnippet: original.codeSnippet,
+              options: orderedOptions,
+            };
+          })
+          .filter(Boolean);
+
+        return res.json({ success: true, questions: ordered, total: ordered.length });
       }
     }
 
-    // Default fallback if no specific student attempt exists yet
-    if (finalQuestions.length === 0) {
-      const masterList = Array.from(masterQuestionMap.values());
-      const limit = config.totalQuestions || DEFAULT_TOTAL_QUESTIONS;
-      finalQuestions = masterList.slice(0, limit).map((q) => ({
-        id: q.questionId || q.id,
-        questionId: q.questionId || q.id,
-        category: q.category,
-        difficulty: q.difficulty,
-        question: q.question,
-        codeSnippet: q.codeSnippet,
-        options: q.options.map((opt) => ({
-          id: opt.id,
-          text: opt.text,
-        })),
-      }));
-    }
+    // Default sanitized question list
+    const sanitized = allQuestions.map((q, idx) => ({
+      id: q.questionId,
+      questionId: q.questionId,
+      displayOrder: idx + 1,
+      category: q.category,
+      difficulty: q.difficulty,
+      question: q.question,
+      codeSnippet: q.codeSnippet,
+      options: q.options.map((o) => ({ id: o.id, text: o.text })),
+    }));
 
-    return res.json({
-      success: true,
-      total: finalQuestions.length,
-      questions: finalQuestions,
-      config: {
-        eventTitle: config.eventTitle,
-        durationMinutes: config.quizDurationMinutes,
-        maxWarnings: config.maxActivityWarnings || 2,
-        fullscreenRequired: config.fullscreenRequired !== false,
-        tabSwitchMonitoring: config.tabSwitchMonitoring !== false,
-      },
-    });
+    return res.json({ success: true, questions: sanitized, total: sanitized.length });
   } catch (error) {
     console.error('Error fetching questions:', error);
     return res.status(500).json({ success: false, message: 'Failed to retrieve assessment questions.' });
   }
 };
 
-// 3. Save Candidate Single Answer
+// 3. Save Single Answer (MongoDB Map persistence with grace period defense)
 export const saveAnswer = async (req, res) => {
   try {
     const { registerNumber, questionId, selectedOption } = req.body;
-    if (!registerNumber || !questionId) {
-      return res.status(400).json({ success: false, message: 'Register Number and Question ID are required.' });
+
+    if (!registerNumber || questionId === undefined || selectedOption === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'registerNumber, questionId, and selectedOption are required.',
+      });
     }
 
-    const regNoClean = registerNumber.trim();
-    const attempt = memoryStore.quizAttempts.get(regNoClean);
+    const regNoClean = registerNumber.trim().toUpperCase();
+    const eventId = 'BLIND_CODING_2026';
+    const attempt = await QuizAttempt.findOne({ registerNumber: regNoClean, eventId });
 
     if (!attempt) {
       return res.status(404).json({ success: false, message: 'Quiz attempt not found.' });
     }
 
+    // Grace Window Defense for race conditions
     if (attempt.status === 'COMPLETED') {
-      const submittedMs = attempt.submittedAt ? new Date(attempt.submittedAt).getTime() : 0;
-      const graceMs = 2000;
-      if (Date.now() - submittedMs > graceMs) {
-        return res.status(403).json({ success: false, message: 'Assessment already completed. Modifications disallowed.' });
+      const now = Date.now();
+      const submittedTime = attempt.submittedAt ? new Date(attempt.submittedAt).getTime() : 0;
+      const elapsedSinceSubmit = now - submittedTime;
+
+      if (elapsedSinceSubmit <= 2000) {
+        if (!attempt.answers) attempt.answers = new Map();
+        attempt.answers.set(String(questionId), String(selectedOption));
+
+        // Recalculate score with late answer
+        const allQuestions = await Question.find();
+        let correctCount = 0;
+        allQuestions.forEach((q) => {
+          const studentAns = attempt.answers.get(String(q.questionId));
+          if (studentAns === q.correctAnswer) correctCount++;
+        });
+
+        attempt.score = correctCount;
+        attempt.percentage = Math.round((correctCount / 25) * 100);
+        await attempt.save();
+
+        return res.json({
+          success: true,
+          lateGraceAccepted: true,
+          message: 'Answer saved within grace window and score updated.',
+          savedCount: attempt.answers.size,
+        });
       }
 
-      // Grace-period late answer: accept it and recompute the score
-      if (!attempt.answers) attempt.answers = {};
-      if (selectedOption) {
-        attempt.answers[String(questionId)] = String(selectedOption).toUpperCase();
-      } else {
-        delete attempt.answers[String(questionId)];
-      }
-
-      const config = getActiveConfig();
-      const totalQuestionsConfig = config.totalQuestions || DEFAULT_TOTAL_QUESTIONS;
-      const masterQuestionMap = getMasterQuestionMap();
-      const questionsToScore =
-        attempt.assignedQuestions && attempt.assignedQuestions.length > 0
-          ? attempt.assignedQuestions
-          : Array.from(masterQuestionMap.values()).slice(0, totalQuestionsConfig);
-
-      let correctCount = 0;
-      questionsToScore.forEach((aq) => {
-        const qId = String(aq.questionId || aq.id);
-        const q = masterQuestionMap.get(qId);
-        if (q) {
-          const studentChoice = attempt.answers[qId];
-          if (studentChoice && String(studentChoice).toUpperCase() === String(q.correctAnswer).toUpperCase()) {
-            correctCount++;
-          }
-        }
-      });
-
-      attempt.score = correctCount;
-      attempt.percentage = Math.round((correctCount / totalQuestionsConfig) * 100);
-      memoryStore.quizAttempts.set(regNoClean, attempt);
-
-      return res.json({
-        success: true,
-        message: 'Late answer accepted within grace period; score recalculated.',
-        savedCount: Object.keys(attempt.answers).length,
-        lateGraceAccepted: true,
-      });
+      return res.status(403).json({ success: false, message: 'Quiz is completed and locked.' });
     }
 
     if (!attempt.answers) {
-      attempt.answers = {};
+      attempt.answers = new Map();
     }
-
-    if (selectedOption) {
-      attempt.answers[String(questionId)] = String(selectedOption).toUpperCase();
+    if (selectedOption === null || selectedOption === '') {
+      attempt.answers.delete(String(questionId));
     } else {
-      delete attempt.answers[String(questionId)];
+      attempt.answers.set(String(questionId), String(selectedOption));
     }
-
-    memoryStore.quizAttempts.set(regNoClean, attempt);
+    await attempt.save();
 
     return res.json({
       success: true,
-      message: 'Answer recorded successfully on server.',
-      savedCount: Object.keys(attempt.answers).length,
+      message: 'Answer saved.',
+      questionId,
+      selectedOption,
+      savedCount: attempt.answers.size,
     });
   } catch (error) {
-    console.error('Error saving answer:', error);
-    return res.status(500).json({ success: false, message: 'Failed to save answer state on server.' });
+    console.error('Error saving answer to MongoDB:', error);
+    return res.status(500).json({ success: false, message: 'Failed to save answer.' });
   }
 };
 
-// 4. Log Activity Event (Tab Switch / Fullscreen Exit) with Server Guard
+// 4. Log Activity Event (Tab Switch / Fullscreen Exit) with 2s Server Guard
 export const logActivity = async (req, res) => {
   try {
     const { registerNumber, activityType } = req.body;
@@ -356,8 +365,9 @@ export const logActivity = async (req, res) => {
       });
     }
 
-    const regNoClean = registerNumber.trim();
-    const attempt = memoryStore.quizAttempts.get(regNoClean);
+    const regNoClean = registerNumber.trim().toUpperCase();
+    const eventId = 'BLIND_CODING_2026';
+    const attempt = await QuizAttempt.findOne({ registerNumber: regNoClean, eventId });
 
     if (!attempt) {
       return res.status(404).json({ success: false, message: 'Quiz attempt not found.' });
@@ -367,7 +377,7 @@ export const logActivity = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Quiz attempt already completed.' });
     }
 
-    const config = getActiveConfig();
+    const config = await getActiveConfig();
     const maxWarnings = config.maxActivityWarnings || 2;
     const now = new Date();
 
@@ -375,14 +385,14 @@ export const logActivity = async (req, res) => {
       attempt.activityLogs = [];
     }
 
-    // Server-side debouncing: Ignore duplicate event of the same type within 1.5 seconds
-    const lastMatchingLog = [...attempt.activityLogs]
+    // Server-side debouncing: Ignore any activity event within 2.0 seconds
+    const lastActivityLog = [...attempt.activityLogs]
       .reverse()
-      .find((log) => log.type === activityType);
+      .find((log) => ['TAB_SWITCH', 'FULLSCREEN_EXIT'].includes(log.type));
 
-    if (lastMatchingLog) {
-      const diffMs = now.getTime() - new Date(lastMatchingLog.timestamp).getTime();
-      if (diffMs < 1500) {
+    if (lastActivityLog) {
+      const diffMs = now.getTime() - new Date(lastActivityLog.timestamp).getTime();
+      if (diffMs < 2000) {
         const total = (attempt.tabSwitchCount || 0) + (attempt.fullscreenExitCount || 0);
         return res.json({
           success: true,
@@ -394,6 +404,7 @@ export const logActivity = async (req, res) => {
           maxActivityWarnings: maxWarnings,
           autoSubmitRequired: Boolean(config.autoSubmitOnWarningLimit && total >= maxWarnings),
           shouldAutoSubmit: Boolean(config.autoSubmitOnWarningLimit && total >= maxWarnings),
+          message: 'Duplicate activity event debounced.',
         });
       }
     }
@@ -407,17 +418,16 @@ export const logActivity = async (req, res) => {
 
     attempt.totalWarnings = (attempt.tabSwitchCount || 0) + (attempt.fullscreenExitCount || 0);
 
-    // Record chronological log entry
     attempt.activityLogs.push({
       type: activityType,
-      timestamp: now.toISOString(),
+      timestamp: now,
       details:
         activityType === 'TAB_SWITCH'
           ? `Tab switch or window focus loss (Warning #${attempt.totalWarnings})`
           : `Exited fullscreen mode (Warning #${attempt.totalWarnings})`,
     });
 
-    memoryStore.quizAttempts.set(regNoClean, attempt);
+    await attempt.save();
 
     const autoSubmitRequired = Boolean(config.autoSubmitOnWarningLimit && attempt.totalWarnings >= maxWarnings);
 
@@ -434,31 +444,38 @@ export const logActivity = async (req, res) => {
       message: `Activity logged: ${activityType}. Total warnings: ${attempt.totalWarnings}/${maxWarnings}`,
     });
   } catch (error) {
-    console.error('Error logging quiz activity:', error);
-    return res.status(500).json({ success: false, message: 'Failed to record quiz activity on server.' });
+    console.error('Error logging quiz activity in MongoDB:', error);
+    return res.status(500).json({ success: false, message: 'Failed to record quiz activity.' });
   }
 };
 
-// 5. Submit Assessment (Server computes score comparing stable option IDs)
+// 5. Submit Assessment (Server computes score comparing stable option IDs — NO FAKE FALLBACKS)
 export const submitQuiz = async (req, res) => {
   try {
     const { registerNumber, isAutoSubmit } = req.body;
+
     if (!registerNumber) {
-      return res.status(400).json({ success: false, message: 'Register Number required for submission.' });
+      return res.status(400).json({ success: false, message: 'Register number is required to submit.' });
     }
 
-    const regNoClean = registerNumber.trim();
-    const attempt = memoryStore.quizAttempts.get(regNoClean);
-    const config = getActiveConfig();
-    const totalQuestionsConfig = config.totalQuestions || DEFAULT_TOTAL_QUESTIONS;
-    const durationSeconds = (config.quizDurationMinutes || 60) * 60;
-    const masterQuestionMap = getMasterQuestionMap();
+    const regNoClean = registerNumber.trim().toUpperCase();
+    const eventId = 'BLIND_CODING_2026';
+    const attempt = await QuizAttempt.findOne({ registerNumber: regNoClean, eventId });
 
     if (!attempt) {
-      return res.status(404).json({ success: false, message: 'Quiz attempt not found.' });
+      return res.status(404).json({ success: false, message: 'Assessment attempt not found.' });
     }
 
+    const config = await getActiveConfig();
+    const totalQuestionsConfig = config.totalQuestions || 25;
+
+    // Idempotent: If already completed, safely return finalized result
     if (attempt.status === 'COMPLETED') {
+      let tier = 'KEEP LEARNING';
+      if (attempt.percentage >= 90) tier = 'EXCELLENT PERFORMANCE';
+      else if (attempt.percentage >= 70) tier = 'GREAT WORK';
+      else if (attempt.percentage >= 50) tier = 'GOOD ATTEMPT';
+
       return res.json({
         success: true,
         message: 'Quiz was already finalized.',
@@ -468,88 +485,102 @@ export const submitQuiz = async (req, res) => {
           score: attempt.score,
           total: totalQuestionsConfig,
           percentage: attempt.percentage,
+          performanceTier: tier,
           timeFormatted: attempt.timeFormatted,
           submittedAt: attempt.submittedAt,
+          isAutoSubmit: Boolean(isAutoSubmit),
         },
       });
     }
 
-    const startTime = attempt.startedAt ? new Date(attempt.startedAt).getTime() : Date.now();
-    const endTime = Date.now();
-    const elapsedSeconds = Math.min(durationSeconds, Math.floor((endTime - startTime) / 1000));
+    const now = new Date();
+    const studentAnswers = attempt.answers instanceof Map
+      ? attempt.answers
+      : new Map(Object.entries(attempt.answers || {}));
 
-    // SERVER-SIDE SCORE COMPUTATION (Compare stable selectedOption vs correctAnswer)
-    let correctCount = 0;
-    const studentAnswers = attempt.answers || {};
+    const allQuestions = await Question.find().sort({ questionId: 1 });
+    let score = 0;
+    const answerDetails = [];
 
-    const questionsToScore =
-      attempt.assignedQuestions && attempt.assignedQuestions.length > 0
-        ? attempt.assignedQuestions
-        : Array.from(masterQuestionMap.values()).slice(0, totalQuestionsConfig);
+    allQuestions.forEach((q) => {
+      const qIdStr = String(q.questionId);
+      const studentChoice = studentAnswers.get(qIdStr) || null;
+      const correctId = q.correctOptionId || q.correctAnswer;
+      const isCorrect = Boolean(studentChoice && studentChoice === correctId);
 
-    questionsToScore.forEach((aq) => {
-      const qId = String(aq.questionId || aq.id);
-      const q = masterQuestionMap.get(qId);
-      if (q) {
-        const studentChoice = studentAnswers[qId];
-        if (studentChoice && String(studentChoice).toUpperCase() === String(q.correctAnswer).toUpperCase()) {
-          correctCount++;
-        }
+      if (isCorrect) {
+        score++;
       }
+
+      answerDetails.push({
+        questionId: q.questionId,
+        selectedOptionId: studentChoice,
+        isCorrect,
+        answeredAt: studentChoice ? (attempt.updatedAt || now) : null,
+      });
     });
 
-    const percentage = Math.round((correctCount / totalQuestionsConfig) * 100);
+    attempt.answerDetails = answerDetails;
+
+    const percentage = Math.round((score / totalQuestionsConfig) * 100);
+
+    const startedTime = attempt.startedAt ? new Date(attempt.startedAt).getTime() : now.getTime();
+    const durationSeconds = (config.quizDurationMinutes || 60) * 60;
+    const timeTakenSeconds = Math.min(
+      durationSeconds,
+      Math.max(1, Math.floor((now.getTime() - startedTime) / 1000))
+    );
+
+    const mins = Math.floor(timeTakenSeconds / 60);
+    const secs = timeTakenSeconds % 60;
+    const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
     let performanceTier = 'KEEP LEARNING';
     if (percentage >= 90) performanceTier = 'EXCELLENT PERFORMANCE';
     else if (percentage >= 70) performanceTier = 'GREAT WORK';
     else if (percentage >= 50) performanceTier = 'GOOD ATTEMPT';
 
-    const mins = Math.floor(elapsedSeconds / 60);
-    const secs = elapsedSeconds % 60;
-    const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-    attempt.status = 'COMPLETED';
-    attempt.submittedAt = new Date().toISOString();
-    attempt.timeTakenSeconds = elapsedSeconds;
-    attempt.timeFormatted = timeFormatted;
-    attempt.score = correctCount;
+    attempt.score = score;
     attempt.totalQuestions = totalQuestionsConfig;
     attempt.percentage = percentage;
+    attempt.timeTakenSeconds = timeTakenSeconds;
+    attempt.timeFormatted = timeFormatted;
+    attempt.status = 'COMPLETED';
+    attempt.submittedAt = now;
 
     if (!attempt.activityLogs) attempt.activityLogs = [];
     attempt.activityLogs.push({
       type: 'QUIZ_SUBMITTED',
-      timestamp: attempt.submittedAt,
+      timestamp: now,
       details: isAutoSubmit
-        ? 'Quiz submitted automatically due to timeout or warning limit reached'
-        : 'Quiz submitted normally by candidate',
+        ? 'Automatic submission triggered due to warning limit or timeout'
+        : 'Manual final submission confirmed by candidate',
     });
 
-    memoryStore.quizAttempts.set(regNoClean, attempt);
+    await attempt.save();
 
     return res.json({
       success: true,
-      message: isAutoSubmit ? 'Assessment submitted automatically.' : 'Assessment submitted successfully.',
+      message: 'Assessment completed and scored.',
       result: {
         studentName: attempt.studentName,
         registerNumber: attempt.registerNumber,
-        score: correctCount,
+        score,
         total: totalQuestionsConfig,
         percentage,
         performanceTier,
         timeFormatted,
-        submittedAt: attempt.submittedAt,
+        submittedAt: now.toISOString(),
         isAutoSubmit: Boolean(isAutoSubmit),
       },
     });
   } catch (error) {
-    console.error('Error submitting quiz:', error);
-    return res.status(500).json({ success: false, message: 'Server error calculating final score.' });
+    console.error('Error submitting quiz in MongoDB:', error);
+    return res.status(500).json({ success: false, message: 'Server error processing quiz submission.' });
   }
 };
 
-// 6. Get Candidate Result (Private Only)
+// 6. Get Candidate Result (Strictly score and performance tier — NO answers or review exposed)
 export const getStudentResult = async (req, res) => {
   try {
     const { registerNumber } = req.params;
@@ -557,18 +588,27 @@ export const getStudentResult = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Register Number required.' });
     }
 
-    const regNoClean = registerNumber.trim();
-    const attempt = memoryStore.quizAttempts.get(regNoClean);
-    const config = getActiveConfig();
+    const regNoClean = registerNumber.trim().toUpperCase();
+    const eventId = 'BLIND_CODING_2026';
+    const attempt = await QuizAttempt.findOne({ registerNumber: regNoClean, eventId });
 
-    if (!attempt || attempt.status !== 'COMPLETED') {
-      return res.status(404).json({ success: false, message: 'Completed result not found for this candidate.' });
+    if (!attempt) {
+      return res.status(404).json({ success: false, message: 'No assessment record found.' });
     }
 
+    if (attempt.status !== 'COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Assessment has not been finalized yet.',
+        status: attempt.status,
+      });
+    }
+
+    const pct = attempt.percentage || 0;
     let performanceTier = 'KEEP LEARNING';
-    if (attempt.percentage >= 90) performanceTier = 'EXCELLENT PERFORMANCE';
-    else if (attempt.percentage >= 70) performanceTier = 'GREAT WORK';
-    else if (attempt.percentage >= 50) performanceTier = 'GOOD ATTEMPT';
+    if (pct >= 90) performanceTier = 'EXCELLENT PERFORMANCE';
+    else if (pct >= 70) performanceTier = 'GREAT WORK';
+    else if (pct >= 50) performanceTier = 'GOOD ATTEMPT';
 
     return res.json({
       success: true,
@@ -580,39 +620,38 @@ export const getStudentResult = async (req, res) => {
         class: attempt.class,
         section: attempt.section,
         score: attempt.score,
-        total: attempt.totalQuestions || config.totalQuestions || DEFAULT_TOTAL_QUESTIONS,
-        percentage: attempt.percentage,
+        total: attempt.totalQuestions || 25,
+        percentage: pct,
         performanceTier,
         timeFormatted: attempt.timeFormatted,
         submittedAt: attempt.submittedAt,
       },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Failed to retrieve candidate score.' });
+    console.error('Error getting student result:', error);
+    return res.status(500).json({ success: false, message: 'Failed to retrieve assessment result.' });
   }
 };
 
-// 7. Get Public Event Configuration
-export const getPublicQuizConfig = async (req, res) => {
+// 7. Public Configuration API
+export const getPublicConfig = async (req, res) => {
   try {
-    const config = getActiveConfig();
+    const config = await getActiveConfig();
     return res.json({
       success: true,
       config: {
         eventTitle: config.eventTitle,
         quizDurationMinutes: config.quizDurationMinutes,
         totalQuestions: config.totalQuestions,
-        eventStartAt: config.eventStartAt,
-        eventEndAt: config.eventEndAt,
         quizAvailability: config.quizAvailability,
-        maxActivityWarnings: config.maxActivityWarnings || 2,
-        autoSubmitOnWarningLimit: config.autoSubmitOnWarningLimit !== false,
-        fullscreenRequired: config.fullscreenRequired !== false,
-        tabSwitchMonitoring: config.tabSwitchMonitoring !== false,
-        passingPercentage: config.passingPercentage,
+        maxActivityWarnings: config.maxActivityWarnings,
+        fullscreenRequired: config.fullscreenRequired,
+        tabSwitchMonitoring: config.tabSwitchMonitoring,
       },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Failed to retrieve event configuration.' });
+    return res.status(500).json({ success: false, message: 'Failed to fetch public configuration.' });
   }
 };
+
+export const getPublicQuizConfig = getPublicConfig;

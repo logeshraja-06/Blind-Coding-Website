@@ -1,12 +1,10 @@
 import { Student } from '../models/Student.js';
 import { QuizAttempt } from '../models/QuizAttempt.js';
-import { memoryStore } from '../config/db.js';
 
-// Helper to validate numeric register number
+// Helper to validate numeric/alphanumeric college register number
 const isValidRegisterNumber = (regNo) => {
   if (!regNo || typeof regNo !== 'string') return false;
   const cleaned = regNo.trim();
-  // Allow numeric or standard alphanumeric college roll number (min 4 chars)
   return /^[0-9A-Za-z]{4,15}$/.test(cleaned);
 };
 
@@ -22,18 +20,20 @@ export const registerStudent = async (req, res) => {
       });
     }
 
-    const regNoClean = registerNumber.trim();
+    const regNoClean = registerNumber.trim().toUpperCase();
 
     if (!isValidRegisterNumber(regNoClean)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid Register Number format. Please enter a valid numeric college register number (e.g. 953710).',
+        message: 'Invalid Register Number format. Please enter a valid college register number (e.g. 953710).',
       });
     }
 
-    // Check if attempt already exists in memory or Mongoose
-    let existingAttempt = memoryStore.quizAttempts.get(regNoClean);
-    let existingStudent = memoryStore.students.get(regNoClean);
+    const eventId = 'BLIND_CODING_2026';
+
+    // Check existing attempt in MongoDB
+    const existingAttempt = await QuizAttempt.findOne({ registerNumber: regNoClean, eventId });
+    const existingStudent = await Student.findOne({ registerNumber: regNoClean });
 
     if (existingAttempt) {
       if (existingAttempt.status === 'COMPLETED') {
@@ -63,31 +63,51 @@ export const registerStudent = async (req, res) => {
           isResume: true,
         });
       }
+
+      // If existing attempt is NOT_STARTED, return it cleanly
+      return res.status(200).json({
+        success: true,
+        message: 'Registration confirmed. Ready to start the Blind Coding challenge.',
+        student: existingStudent || {
+          name: existingAttempt.studentName,
+          registerNumber: regNoClean,
+          department: existingAttempt.department,
+          year: existingAttempt.year,
+          class: existingAttempt.class,
+          section: existingAttempt.section,
+        },
+        attempt: existingAttempt,
+        isResume: false,
+      });
     }
 
-    // Create new student and initial attempt
-    const studentRecord = {
-      id: `std-${Date.now()}`,
-      name: name.trim(),
-      registerNumber: regNoClean,
-      department: department || 'Department of Computer Science and Engineering',
-      year,
-      class: finalClass.trim(),
-      section: section.trim(),
-      createdAt: new Date().toISOString(),
-    };
+    // Persist Student Document in MongoDB
+    let student = existingStudent;
+    if (!student) {
+      student = await Student.create({
+        name: name.trim(),
+        registerNumber: regNoClean,
+        department: department?.trim() || 'Department of Computer Science and Engineering',
+        year,
+        class: finalClass.trim(),
+        section: section.trim(),
+      });
+    }
 
-    const newAttempt = {
-      id: `attempt-${regNoClean}`,
-      studentId: studentRecord.id,
-      studentName: studentRecord.name,
+    // Persist QuizAttempt Document in MongoDB
+    const newAttempt = await QuizAttempt.create({
+      studentId: student._id,
+      eventId,
       registerNumber: regNoClean,
-      department: studentRecord.department,
-      year: studentRecord.year,
-      class: studentRecord.class,
-      section: studentRecord.section,
+      studentName: student.name,
+      department: student.department,
+      year: student.year,
+      class: student.class,
+      section: student.section,
       answers: {},
+      assignedQuestions: [],
       startedAt: null,
+      expiresAt: null,
       submittedAt: null,
       timeTakenSeconds: null,
       timeFormatted: '--:--',
@@ -95,28 +115,32 @@ export const registerStudent = async (req, res) => {
       totalQuestions: 25,
       percentage: null,
       status: 'NOT_STARTED',
-      assignedQuestions: [],
       tabSwitchCount: 0,
       fullscreenExitCount: 0,
       totalWarnings: 0,
       activityLogs: [],
-    };
-
-    memoryStore.students.set(regNoClean, studentRecord);
-    memoryStore.quizAttempts.set(regNoClean, newAttempt);
+    });
 
     return res.status(201).json({
       success: true,
-      message: 'Student registered successfully. Ready to start the Blind Coding challenge.',
-      student: studentRecord,
+      message: 'Student registered successfully in MongoDB. Ready to start the challenge.',
+      student: {
+        id: student._id,
+        name: student.name,
+        registerNumber: student.registerNumber,
+        department: student.department,
+        year: student.year,
+        class: student.class,
+        section: student.section,
+      },
       attempt: newAttempt,
       isResume: false,
     });
   } catch (error) {
-    console.error('Error registering student:', error);
+    console.error('Error registering student in MongoDB:', error);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error while processing student registration.',
+      message: error.message || 'Internal server error while processing student registration.',
     });
   }
 };
@@ -128,9 +152,13 @@ export const checkRegisterNumber = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Register Number required.' });
     }
 
-    const regNoClean = registerNumber.trim();
-    const attempt = memoryStore.quizAttempts.get(regNoClean);
-    const student = memoryStore.students.get(regNoClean);
+    const regNoClean = registerNumber.trim().toUpperCase();
+    const eventId = 'BLIND_CODING_2026';
+
+    const [attempt, student] = await Promise.all([
+      QuizAttempt.findOne({ registerNumber: regNoClean, eventId }),
+      Student.findOne({ registerNumber: regNoClean }),
+    ]);
 
     if (!attempt) {
       return res.json({
@@ -144,15 +172,23 @@ export const checkRegisterNumber = async (req, res) => {
       success: true,
       exists: true,
       status: attempt.status,
-      student,
+      student: student || {
+        name: attempt.studentName,
+        registerNumber: attempt.registerNumber,
+        department: attempt.department,
+        year: attempt.year,
+        class: attempt.class,
+        section: attempt.section,
+      },
       attempt: {
-        id: attempt.id,
+        id: attempt._id,
         startedAt: attempt.startedAt,
         status: attempt.status,
         score: attempt.status === 'COMPLETED' ? attempt.score : null,
       },
     });
   } catch (error) {
+    console.error('Server error checking register number:', error);
     return res.status(500).json({ success: false, message: 'Server error checking register number.' });
   }
 };

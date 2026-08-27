@@ -200,49 +200,30 @@ export const QuizProvider = ({ children }) => {
     }
   }, [participant, durationSeconds, eventConfig.maxActivityWarnings]);
 
-  // Submit assessment (Unified submission path)
+  // Submit assessment (Server is single source of truth — NO FAKE FALLBACKS)
   const submitQuiz = useCallback(async (isAutoSubmit = false) => {
     const regNo = participant?.registerNumber;
-    let backendResult = null;
-
-    if (regNo) {
-      const response = await api.submitQuiz(regNo, isAutoSubmit);
-      if (response.success && response.result) {
-        backendResult = response.result;
-      }
+    if (!regNo) {
+      throw new Error('No registered participant found. Please register before submitting.');
     }
 
-    // Client fallback if server is offline
-    if (!backendResult) {
-      const currentStart = startedAt || parseInt(localStorage.getItem('blindcode_started_at') || `${Date.now()}`, 10);
-      const elapsedSeconds = Math.min(durationSeconds, Math.floor((Date.now() - currentStart) / 1000));
-      const mins = Math.floor(elapsedSeconds / 60);
-      const secs = elapsedSeconds % 60;
-      const timeFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    let response = await api.submitQuiz(regNo, isAutoSubmit);
 
-      let correct = 0;
-      questions.forEach((q) => {
-        if (answers[q.id || q.questionId] === q.correctAnswer) correct++;
-      });
-      const totalQ = eventConfig.totalQuestions || TOTAL_QUESTIONS;
-      const percentage = Math.round((correct / totalQ) * 100);
-      let performanceTier = 'KEEP LEARNING';
-      if (percentage >= 90) performanceTier = 'EXCELLENT PERFORMANCE';
-      else if (percentage >= 70) performanceTier = 'GREAT WORK';
-      else if (percentage >= 50) performanceTier = 'GOOD ATTEMPT';
-
-      backendResult = {
-        studentName: participant?.name || 'Participant',
-        registerNumber: participant?.registerNumber || '953710',
-        score: correct,
-        total: totalQ,
-        percentage,
-        performanceTier,
-        timeFormatted,
-        submittedAt: new Date().toISOString(),
-      };
+    // Single safe automatic retry on network glitch
+    if (!response || !response.success || !response.result) {
+      await new Promise((r) => setTimeout(r, 800));
+      response = await api.submitQuiz(regNo, isAutoSubmit);
     }
 
+    if (!response || !response.success || !response.result) {
+      const errMsg =
+        response?.message ||
+        'Server unreachable or error calculating final score. Your answers remain saved. Please retry.';
+      addToast(errMsg, 'error', 6000);
+      throw new Error(errMsg);
+    }
+
+    const backendResult = response.result;
     setQuizResult(backendResult);
     setQuizStatus('submitted');
     localStorage.setItem('blindcode_result', JSON.stringify(backendResult));
@@ -256,7 +237,7 @@ export const QuizProvider = ({ children }) => {
     }
 
     return backendResult;
-  }, [participant, startedAt, durationSeconds, questions, answers, eventConfig.totalQuestions, addToast]);
+  }, [participant, addToast]);
 
   // Record Activity Event (Tab Switch / Fullscreen Exit)
   const recordActivity = useCallback(async (activityType) => {
@@ -285,13 +266,18 @@ export const QuizProvider = ({ children }) => {
 
   // Select Option with Subtle Inline Save & Single Auto-Retry
   const selectAnswer = useCallback(async (questionId, optionId) => {
+    const qIdStr = String(questionId);
     setAnswers((prev) => {
-      const updated = { ...prev, [questionId]: optionId };
+      const updated = { ...prev, [qIdStr]: optionId, [questionId]: optionId };
       localStorage.setItem('blindcode_answers', JSON.stringify(updated));
       return updated;
     });
 
-    setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'saving' }));
+    setSaveStatusMap((prev) => ({
+      ...prev,
+      [qIdStr]: 'saving',
+      [questionId]: 'saving',
+    }));
 
     const regNo = participant?.registerNumber;
     if (regNo) {
@@ -300,36 +286,62 @@ export const QuizProvider = ({ children }) => {
 
         // Single automatic retry on failure
         if (!saveRes || !saveRes.success) {
-          setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'retrying' }));
+          setSaveStatusMap((prev) => ({
+            ...prev,
+            [qIdStr]: 'retrying',
+            [questionId]: 'retrying',
+          }));
           await new Promise((r) => setTimeout(r, 600));
           saveRes = await api.saveAnswer(regNo, questionId, optionId);
         }
 
         if (saveRes && saveRes.success) {
-          setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'saved' }));
+          setSaveStatusMap((prev) => ({
+            ...prev,
+            [qIdStr]: 'saved',
+            [questionId]: 'saved',
+          }));
           setTimeout(() => {
-            setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'idle' }));
+            setSaveStatusMap((prev) => ({
+              ...prev,
+              [qIdStr]: 'idle',
+              [questionId]: 'idle',
+            }));
           }, 1200);
           return saveRes;
         } else {
-          setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'error' }));
+          setSaveStatusMap((prev) => ({
+            ...prev,
+            [qIdStr]: 'error',
+            [questionId]: 'error',
+          }));
           return saveRes || { success: false };
         }
       } catch (err) {
         console.warn('saveAnswer error in selectAnswer:', err);
-        setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'error' }));
+        setSaveStatusMap((prev) => ({
+          ...prev,
+          [qIdStr]: 'error',
+          [questionId]: 'error',
+        }));
         return { success: false, error: err };
       }
     } else {
-      setSaveStatusMap((prev) => ({ ...prev, [questionId]: 'saved' }));
+      setSaveStatusMap((prev) => ({
+        ...prev,
+        [qIdStr]: 'saved',
+        [questionId]: 'saved',
+      }));
       return { success: true };
     }
   }, [participant]);
 
   // Clear answer
   const clearAnswer = useCallback((questionId) => {
+    const qIdStr = String(questionId);
     setAnswers((prev) => {
       const updated = { ...prev };
+      delete updated[qIdStr];
       delete updated[questionId];
       localStorage.setItem('blindcode_answers', JSON.stringify(updated));
       return updated;
@@ -404,8 +416,19 @@ export const QuizProvider = ({ children }) => {
     setActivityWarnings({ tabSwitchCount: 0, fullscreenExitCount: 0, totalWarnings: 0, maxWarnings: 2 });
   }, [durationSeconds]);
 
-  const answeredCount = Object.keys(answers).length;
-  const totalQ = eventConfig.totalQuestions || questions.length || TOTAL_QUESTIONS;
+  const isQuestionAnswered = (q) => {
+    if (!q) return false;
+    const qId = q.questionId !== undefined ? q.questionId : q.id;
+    if (qId === undefined || qId === null) return false;
+    const val = answers[qId] !== undefined ? answers[qId] : answers[String(qId)];
+    return val !== undefined && val !== null && val !== '';
+  };
+
+  const answeredCount = questions && questions.length > 0
+    ? questions.filter(isQuestionAnswered).length
+    : Object.keys(answers).filter((k) => answers[k] !== undefined && answers[k] !== null && answers[k] !== '').length;
+
+  const totalQ = eventConfig.totalQuestions || (questions && questions.length) || TOTAL_QUESTIONS;
   const unansweredCount = Math.max(0, totalQ - answeredCount);
 
   return (

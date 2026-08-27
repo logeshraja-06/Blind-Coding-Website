@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { memoryStore } from '../config/db.js';
-import { INITIAL_QUESTIONS } from '../utils/seedData.js';
+import { Admin } from '../models/Admin.js';
+import { Question } from '../models/Question.js';
+import { QuizAttempt } from '../models/QuizAttempt.js';
+import { EventConfig } from '../models/EventConfig.js';
 import { getActiveConfig } from './quizController.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'TECH_FORCE_BLIND_CODING_2026_SECRET_KEY';
@@ -14,42 +15,23 @@ export const adminLogin = async (req, res) => {
     }
 
     const emailClean = email.trim().toLowerCase();
+    const admin = await Admin.findOne({ email: emailClean });
 
-    // Check memoryStore admins
-    let foundAdmin = null;
-    for (const admin of memoryStore.admins.values()) {
-      if (admin.email.toLowerCase() === emailClean) {
-        foundAdmin = admin;
-        break;
-      }
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Administrator account not found.' });
     }
 
-    // Default fallback check
-    if (!foundAdmin && emailClean === 'admin@cse.techforce.edu') {
-      const isMatch = password === 'Admin@2026';
-      if (isMatch) {
-        foundAdmin = {
-          id: 'admin-001',
-          name: 'TECH FORCE Convenor',
-          email: 'admin@cse.techforce.edu',
-          role: 'SUPER_ADMIN',
-        };
-      }
-    } else if (foundAdmin) {
-      const isMatch = await bcrypt.compare(password, foundAdmin.password);
-      if (!isMatch && password !== 'Admin@2026') {
-        return res.status(401).json({ success: false, message: 'Invalid admin credentials.' });
-      }
-    } else {
-      return res.status(401).json({ success: false, message: 'Administrator account not found.' });
+    const isMatch = await admin.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid admin credentials.' });
     }
 
     const token = jwt.sign(
       {
-        id: foundAdmin.id,
-        name: foundAdmin.name,
-        email: foundAdmin.email,
-        role: foundAdmin.role || 'EVENT_ADMIN',
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role || 'EVENT_ADMIN',
       },
       JWT_SECRET,
       { expiresIn: '12h' }
@@ -60,10 +42,10 @@ export const adminLogin = async (req, res) => {
       message: 'Admin authentication successful.',
       token,
       admin: {
-        id: foundAdmin.id,
-        name: foundAdmin.name,
-        email: foundAdmin.email,
-        role: foundAdmin.role || 'EVENT_ADMIN',
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role || 'EVENT_ADMIN',
       },
     });
   } catch (error) {
@@ -74,36 +56,56 @@ export const adminLogin = async (req, res) => {
 
 export const getDashboardStats = async (req, res) => {
   try {
-    const attempts = Array.from(memoryStore.quizAttempts.values());
-    const totalRegistered = attempts.length;
-    const completed = attempts.filter((a) => a.status === 'COMPLETED');
-    const inProgress = attempts.filter((a) => a.status === 'IN_PROGRESS');
+    const eventId = 'BLIND_CODING_2026';
 
-    const totalScore = completed.reduce((acc, curr) => acc + (curr.score || 0), 0);
-    const averageScore = completed.length > 0 ? Math.round((totalScore / (completed.length * 25)) * 100) : 72;
+    const [totalRegistered, completedAttempts, inProgressCount, totalWarningsResult, yearAgg] =
+      await Promise.all([
+        QuizAttempt.countDocuments({ eventId }),
+        QuizAttempt.find({ eventId, status: 'COMPLETED' }, 'score'),
+        QuizAttempt.countDocuments({ eventId, status: 'IN_PROGRESS' }),
+        QuizAttempt.aggregate([
+          { $match: { eventId } },
+          { $group: { _id: null, total: { $sum: '$totalWarnings' } } },
+        ]),
+        QuizAttempt.aggregate([
+          { $match: { eventId } },
+          { $group: { _id: '$year', count: { $sum: 1 } } },
+        ]),
+      ]);
 
-    const totalActivityWarnings = attempts.reduce((acc, curr) => acc + (curr.totalWarnings || 0), 0);
+    const completedCount = completedAttempts.length;
+    const totalScore = completedAttempts.reduce((acc, curr) => acc + (curr.score || 0), 0);
+    const averageScore =
+      completedCount > 0 ? Math.round((totalScore / (completedCount * 25)) * 100) : 0;
 
-    // Year breakdown
+    const totalActivityWarnings =
+      totalWarningsResult.length > 0 ? totalWarningsResult[0].total : 0;
+
     const yearStats = {
-      'IV Year': attempts.filter((a) => a.year === 'IV Year').length,
-      'III Year': attempts.filter((a) => a.year === 'III Year').length,
-      'II Year': attempts.filter((a) => a.year === 'II Year').length,
-      'I Year': attempts.filter((a) => a.year === 'I Year').length,
+      'IV Year': 0,
+      'III Year': 0,
+      'II Year': 0,
+      'I Year': 0,
     };
+    yearAgg.forEach((y) => {
+      if (y._id && yearStats[y._id] !== undefined) {
+        yearStats[y._id] = y.count;
+      }
+    });
 
     return res.json({
       success: true,
       stats: {
-        totalRegistered: Math.max(156, totalRegistered),
-        quizCompleted: Math.max(142, completed.length),
-        inProgress: inProgress.length,
+        totalRegistered,
+        quizCompleted: completedCount,
+        inProgress: inProgressCount,
         averageScore,
         totalActivityWarnings,
         yearStats,
       },
     });
   } catch (error) {
+    console.error('Failed to fetch admin stats from MongoDB:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch admin stats.' });
   }
 };
@@ -111,9 +113,41 @@ export const getDashboardStats = async (req, res) => {
 export const getParticipants = async (req, res) => {
   try {
     const { search = '', year = 'ALL', status = 'ALL', page = 1, limit = 50 } = req.query;
+    const eventId = 'BLIND_CODING_2026';
+    const query = { eventId };
 
-    let list = Array.from(memoryStore.quizAttempts.values()).map((a) => ({
-      id: a.id,
+    if (year !== 'ALL') {
+      query.year = year;
+    }
+
+    if (status !== 'ALL') {
+      const s = status.toUpperCase();
+      if (s === 'COMPLETED') query.status = 'COMPLETED';
+      else if (s === 'IN PROGRESS' || s === 'IN_PROGRESS') query.status = 'IN_PROGRESS';
+      else if (s === 'NOT STARTED' || s === 'NOT_STARTED') query.status = 'NOT_STARTED';
+    }
+
+    if (search) {
+      const qRegex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { studentName: qRegex },
+        { registerNumber: qRegex },
+        { class: qRegex },
+        { department: qRegex },
+      ];
+    }
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 50;
+    const skip = (pageNum - 1) * limitNum;
+
+    const [total, attempts] = await Promise.all([
+      QuizAttempt.countDocuments(query),
+      QuizAttempt.find(query).sort({ createdAt: -1 }).skip(skip).limit(limitNum),
+    ]);
+
+    const participants = attempts.map((a) => ({
+      id: a._id,
       name: a.studentName,
       registerNumber: a.registerNumber,
       department: a.department,
@@ -128,40 +162,24 @@ export const getParticipants = async (req, res) => {
       tabSwitchCount: a.tabSwitchCount || 0,
       fullscreenExitCount: a.fullscreenExitCount || 0,
       totalWarnings: a.totalWarnings || 0,
-      status: a.status === 'COMPLETED' ? 'Completed' : a.status === 'IN_PROGRESS' ? 'In Progress' : 'Not Started',
+      status:
+        a.status === 'COMPLETED'
+          ? 'Completed'
+          : a.status === 'IN_PROGRESS'
+          ? 'In Progress'
+          : 'Not Started',
       submittedAt: a.submittedAt,
     }));
-
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.registerNumber.toLowerCase().includes(q) ||
-          p.class.toLowerCase().includes(q)
-      );
-    }
-
-    if (year !== 'ALL') {
-      list = list.filter((p) => p.year === year);
-    }
-
-    if (status !== 'ALL') {
-      list = list.filter((p) => p.status.toLowerCase() === status.toLowerCase());
-    }
-
-    const total = list.length;
-    const startIndex = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-    const paginated = list.slice(startIndex, startIndex + parseInt(limit, 10));
 
     return res.json({
       success: true,
       total,
-      page: parseInt(page, 10),
-      totalPages: Math.ceil(total / parseInt(limit, 10)),
-      participants: paginated,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum) || 1,
+      participants,
     });
   } catch (error) {
+    console.error('Failed to query participants from MongoDB:', error);
     return res.status(500).json({ success: false, message: 'Failed to query participants.' });
   }
 };
@@ -169,19 +187,28 @@ export const getParticipants = async (req, res) => {
 // Admin-Only Quiz Activity Log Monitor
 export const getAdminActivity = async (req, res) => {
   try {
-    const config = getActiveConfig();
-    const attempts = Array.from(memoryStore.quizAttempts.values()).map((a) => {
+    const config = await getActiveConfig();
+    const eventId = 'BLIND_CODING_2026';
+
+    const attemptsDoc = await QuizAttempt.find({ eventId }).sort({ updatedAt: -1 });
+
+    const attempts = attemptsDoc.map((a) => {
       const logs = a.activityLogs || [];
       const latestLog = logs.length > 0 ? logs[logs.length - 1] : null;
 
       return {
-        id: a.id,
+        id: a._id,
         name: a.studentName,
         registerNumber: a.registerNumber,
         department: a.department,
         year: a.year,
         class: a.class,
-        status: a.status === 'COMPLETED' ? 'Completed' : a.status === 'IN_PROGRESS' ? 'In Progress' : 'Not Started',
+        status:
+          a.status === 'COMPLETED'
+            ? 'Completed'
+            : a.status === 'IN_PROGRESS'
+            ? 'In Progress'
+            : 'Not Started',
         tabSwitchCount: a.tabSwitchCount || 0,
         fullscreenExitCount: a.fullscreenExitCount || 0,
         totalWarnings: a.totalWarnings || 0,
@@ -199,54 +226,55 @@ export const getAdminActivity = async (req, res) => {
       attempts,
     });
   } catch (error) {
+    console.error('Failed to retrieve activity monitor data:', error);
     return res.status(500).json({ success: false, message: 'Failed to retrieve activity monitor data.' });
   }
 };
 
 export const getLeaderboard = async (req, res) => {
   try {
-    // ADMIN ONLY: Ranks strictly by 1. Score desc, 2. Time taken asc
-    const attempts = Array.from(memoryStore.quizAttempts.values());
-    const completed = attempts
-      .filter((a) => a.status === 'COMPLETED' && a.score !== null)
-      .sort((a, b) => {
-        if (b.score !== a.score) {
-          return b.score - a.score;
-        }
-        return (a.timeTakenSeconds || 0) - (b.timeTakenSeconds || 0);
-      })
-      .map((a, index) => ({
-        rank: index + 1,
-        id: a.id,
-        name: a.studentName,
-        registerNumber: a.registerNumber,
-        department: a.department,
-        year: a.year,
-        class: a.class,
-        score: a.score,
-        total: a.totalQuestions || 25,
-        percentage: a.percentage,
-        timeFormatted: a.timeFormatted,
-        totalWarnings: a.totalWarnings || 0,
-        submittedAt: a.submittedAt,
-      }));
+    const eventId = 'BLIND_CODING_2026';
+
+    // Ranks strictly by: 1. Score desc, 2. Time taken asc
+    const completed = await QuizAttempt.find({
+      eventId,
+      status: 'COMPLETED',
+      score: { $ne: null },
+    }).sort({ score: -1, timeTakenSeconds: 1 });
+
+    const leaderboard = completed.map((a, index) => ({
+      rank: index + 1,
+      id: a._id,
+      name: a.studentName,
+      registerNumber: a.registerNumber,
+      department: a.department,
+      year: a.year,
+      class: a.class,
+      score: a.score,
+      total: a.totalQuestions || 25,
+      percentage: a.percentage,
+      timeFormatted: a.timeFormatted,
+      totalWarnings: a.totalWarnings || 0,
+      submittedAt: a.submittedAt,
+    }));
 
     return res.json({
       success: true,
-      totalRanked: completed.length,
-      leaderboard: completed,
+      totalRanked: leaderboard.length,
+      leaderboard,
     });
   } catch (error) {
+    console.error('Failed to build admin leaderboard from MongoDB:', error);
     return res.status(500).json({ success: false, message: 'Failed to build admin leaderboard.' });
   }
 };
 
 export const getQuestionsBank = async (req, res) => {
   try {
-    const list = Array.from(memoryStore.questions.values());
-    const source = list.length > 0 ? list : INITIAL_QUESTIONS;
-    return res.json({ success: true, questions: source });
+    const questions = await Question.find().sort({ questionId: 1 });
+    return res.json({ success: true, questions });
   } catch (error) {
+    console.error('Failed to retrieve questions bank from MongoDB:', error);
     return res.status(500).json({ success: false, message: 'Failed to retrieve questions bank.' });
   }
 };
@@ -254,15 +282,18 @@ export const getQuestionsBank = async (req, res) => {
 export const addQuestion = async (req, res) => {
   try {
     const { category, difficulty, question, codeSnippet, options, correctAnswer, explanation } = req.body;
-    if (!question || !options || options.length < 2 || !correctAnswer) {
-      return res.status(400).json({ success: false, message: 'Question, at least 2 options, and correct answer are required.' });
+
+    if (!question || !options || options.length !== 4 || !correctAnswer) {
+      return res.status(400).json({
+        success: false,
+        message: 'Question, exactly 4 options, and a valid correct answer (A, B, C, or D) are required.',
+      });
     }
 
-    const currentCount = memoryStore.questions.size;
-    const newId = currentCount + 1;
+    const highest = await Question.findOne().sort({ questionId: -1 });
+    const newId = highest ? highest.questionId + 1 : 1;
 
-    const newQuestion = {
-      id: newId,
+    const newQuestion = await Question.create({
       questionId: newId,
       category: category || 'General Programming',
       difficulty: difficulty || 'Medium',
@@ -274,24 +305,23 @@ export const addQuestion = async (req, res) => {
       })),
       correctAnswer: correctAnswer.toUpperCase(),
       explanation: explanation || 'Admin verified solution.',
-    };
-
-    memoryStore.questions.set(String(newId), newQuestion);
+    });
 
     return res.status(201).json({
       success: true,
-      message: 'New question added to bank successfully.',
+      message: 'New question added to MongoDB question bank successfully.',
       question: newQuestion,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Failed to add question.' });
+    console.error('Failed to add question to MongoDB:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to add question.' });
   }
 };
 
-// Admin Event Settings CRUD
+// Admin Event Settings CRUD in MongoDB
 export const getAdminSettings = async (req, res) => {
   try {
-    const config = getActiveConfig();
+    const config = await getActiveConfig();
     return res.json({
       success: true,
       config,
@@ -308,25 +338,141 @@ export const updateAdminSettings = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Configuration payload required.' });
     }
 
-    const currentConfig = getActiveConfig();
-    const updatedConfig = {
-      ...currentConfig,
-      ...updates,
-      quizDurationMinutes: updates.quizDurationMinutes ? Number(updates.quizDurationMinutes) : currentConfig.quizDurationMinutes,
-      totalQuestions: updates.totalQuestions ? Number(updates.totalQuestions) : currentConfig.totalQuestions,
-      maxActivityWarnings: updates.maxActivityWarnings !== undefined ? Number(updates.maxActivityWarnings) : currentConfig.maxActivityWarnings,
-      passingPercentage: updates.passingPercentage !== undefined ? Number(updates.passingPercentage) : currentConfig.passingPercentage,
-      updatedAt: new Date().toISOString(),
-    };
+    const currentConfig = await getActiveConfig();
 
-    memoryStore.eventConfig = updatedConfig;
+    if (updates.eventTitle !== undefined) currentConfig.eventTitle = updates.eventTitle;
+    if (updates.quizDurationMinutes !== undefined)
+      currentConfig.quizDurationMinutes = Number(updates.quizDurationMinutes);
+    if (updates.totalQuestions !== undefined)
+      currentConfig.totalQuestions = Number(updates.totalQuestions);
+    if (updates.quizAvailability !== undefined)
+      currentConfig.quizAvailability = updates.quizAvailability;
+    if (updates.maxActivityWarnings !== undefined)
+      currentConfig.maxActivityWarnings = Number(updates.maxActivityWarnings);
+    if (updates.autoSubmitOnWarningLimit !== undefined)
+      currentConfig.autoSubmitOnWarningLimit = Boolean(updates.autoSubmitOnWarningLimit);
+    if (updates.fullscreenRequired !== undefined)
+      currentConfig.fullscreenRequired = Boolean(updates.fullscreenRequired);
+    if (updates.tabSwitchMonitoring !== undefined)
+      currentConfig.tabSwitchMonitoring = Boolean(updates.tabSwitchMonitoring);
+    if (updates.passingPercentage !== undefined)
+      currentConfig.passingPercentage = Number(updates.passingPercentage);
+    if (updates.allowAnswerChange !== undefined)
+      currentConfig.allowAnswerChange = Boolean(updates.allowAnswerChange);
+
+    await currentConfig.save();
 
     return res.json({
       success: true,
-      message: 'Event Configuration updated successfully.',
-      config: updatedConfig,
+      message: 'Event Configuration updated successfully in MongoDB.',
+      config: currentConfig,
     });
   } catch (error) {
+    console.error('Failed to update event configuration in MongoDB:', error);
     return res.status(500).json({ success: false, message: 'Failed to update event configuration.' });
+  }
+};
+
+// Admin Detailed Participant Review (Admin-Only Question-by-Question Breakdown)
+export const getParticipantReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let attempt = null;
+
+    if (id && id.match(/^[0-9a-fA-F]{24}$/)) {
+      attempt = await QuizAttempt.findById(id);
+    }
+    if (!attempt) {
+      attempt = await QuizAttempt.findOne({ registerNumber: id.trim().toUpperCase(), eventId: 'BLIND_CODING_2026' });
+    }
+
+    if (!attempt) {
+      return res.status(404).json({ success: false, message: 'Participant record not found.' });
+    }
+
+    const allQuestions = await Question.find().sort({ questionId: 1 });
+    const questionMap = new Map();
+    allQuestions.forEach((q) => questionMap.set(String(q.questionId), q));
+
+    const studentAnswers = attempt.answers instanceof Map
+      ? attempt.answers
+      : new Map(Object.entries(attempt.answers || {}));
+
+    // Reconstruct list in the student's assigned order if available, else sequential
+    let orderedQuestions = [];
+    if (attempt.assignedQuestions && attempt.assignedQuestions.length > 0) {
+      orderedQuestions = attempt.assignedQuestions
+        .map((aq) => questionMap.get(String(aq.questionId)))
+        .filter(Boolean);
+    } else {
+      orderedQuestions = allQuestions;
+    }
+
+    const review = orderedQuestions.map((q, idx) => {
+      const qIdStr = String(q.questionId);
+      const studentChoice = studentAnswers.get(qIdStr) || null;
+      const correctId = q.correctOptionId || q.correctAnswer;
+
+      const optionsMap = new Map((q.options || []).map((o) => [o.id || o.optionId, o.text]));
+      const studentText = studentChoice ? optionsMap.get(studentChoice) || `Option ${studentChoice}` : 'Not Answered';
+      const correctText = optionsMap.get(correctId) || `Option ${correctId}`;
+
+      let status = 'UNANSWERED';
+      let isCorrect = null;
+
+      if (studentChoice) {
+        if (studentChoice === correctId) {
+          status = 'CORRECT';
+          isCorrect = true;
+        } else {
+          status = 'INCORRECT';
+          isCorrect = false;
+        }
+      }
+
+      return {
+        displayOrder: idx + 1,
+        questionId: q.questionId,
+        category: q.category,
+        difficulty: q.difficulty,
+        question: q.questionText || q.question,
+        codeSnippet: q.codeSnippet,
+        options: (q.options || []).map((o) => ({ id: o.id || o.optionId, text: o.text })),
+        studentSelectedOptionId: studentChoice,
+        studentSelectedText: studentText,
+        correctOptionId: correctId,
+        correctText,
+        status, // 'CORRECT' | 'INCORRECT' | 'UNANSWERED'
+        isCorrect,
+      };
+    });
+
+    return res.json({
+      success: true,
+      student: {
+        id: attempt._id,
+        name: attempt.studentName,
+        registerNumber: attempt.registerNumber,
+        department: attempt.department,
+        year: attempt.year,
+        class: attempt.class,
+        section: attempt.section,
+        status: attempt.status,
+        score: attempt.score,
+        total: attempt.totalQuestions || 25,
+        percentage: attempt.percentage,
+        timeFormatted: attempt.timeFormatted,
+        timeTakenSeconds: attempt.timeTakenSeconds,
+        tabSwitchCount: attempt.tabSwitchCount || 0,
+        fullscreenExitCount: attempt.fullscreenExitCount || 0,
+        totalWarnings: attempt.totalWarnings || 0,
+        startedAt: attempt.startedAt,
+        submittedAt: attempt.submittedAt,
+      },
+      review,
+    });
+  } catch (error) {
+    console.error('Error fetching participant review:', error);
+    return res.status(500).json({ success: false, message: 'Failed to retrieve participant review.' });
   }
 };

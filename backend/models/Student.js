@@ -12,26 +12,37 @@ const studentSchema = new mongoose.Schema(
       required: [true, 'Register number is compulsory'],
       unique: true,
       trim: true,
+      uppercase: true,
       index: true,
+      validate: {
+        validator: function (v) {
+          return /^[0-9A-Za-z]{4,15}$/.test(v);
+        },
+        message: (props) => `${props.value} is not a valid register number (4-15 alphanumeric chars).`,
+      },
     },
     department: {
       type: String,
-      required: true,
-      default: 'Computer Science and Engineering',
+      required: [true, 'Department is required'],
+      default: 'Department of Computer Science and Engineering',
+      trim: true,
     },
     year: {
       type: String,
-      required: true,
-      enum: ['I Year', 'II Year', 'III Year', 'IV Year'],
+      required: [true, 'Academic year is required'],
+      enum: {
+        values: ['I Year', 'II Year', 'III Year', 'IV Year'],
+        message: '{VALUE} is not a valid academic year',
+      },
     },
     class: {
       type: String,
-      required: true,
+      required: [true, 'Class name is required'],
       trim: true,
     },
     section: {
       type: String,
-      required: true,
+      required: [true, 'Section is required'],
       trim: true,
     },
   },

@@ -4,9 +4,9 @@ import { protectAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Protected Export Endpoints
-router.get('/pdf', exportPdf);
-router.get('/xlsx', exportExcel);
-router.get('/csv', exportExcel);
+// All Export Endpoints strictly protected by Admin Authentication
+router.get('/pdf', protectAdmin, exportPdf);
+router.get('/xlsx', protectAdmin, exportExcel);
+router.get('/csv', protectAdmin, exportExcel);
 
 export default router;

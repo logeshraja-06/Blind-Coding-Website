@@ -1,25 +1,78 @@
 import mongoose from 'mongoose';
 
+const assignedQuestionSchema = new mongoose.Schema(
+  {
+    questionId: {
+      type: Number,
+      required: true,
+    },
+    optionOrder: {
+      type: [String],
+      required: true,
+      validate: {
+        validator: function (v) {
+          return Array.isArray(v) && v.length === 4;
+        },
+        message: 'Assigned option order must contain exactly 4 option keys.',
+      },
+    },
+  },
+  { _id: false }
+);
+
+const activityLogSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: {
+        values: ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'QUIZ_STARTED', 'QUIZ_SUBMITTED'],
+        message: '{VALUE} is not a valid activity type',
+      },
+      required: true,
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now,
+    },
+    details: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
 const quizAttemptSchema = new mongoose.Schema(
   {
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Student',
-      required: true,
+      required: [true, 'Student ID reference is required'],
+      index: true,
+    },
+    eventId: {
+      type: String,
+      required: [true, 'Event ID is required'],
+      default: 'BLIND_CODING_2026',
       index: true,
     },
     registerNumber: {
       type: String,
-      required: true,
+      required: [true, 'Register number is required'],
+      trim: true,
+      uppercase: true,
       index: true,
     },
     studentName: {
       type: String,
       required: true,
+      trim: true,
     },
     department: {
       type: String,
       required: true,
+      trim: true,
     },
     year: {
       type: String,
@@ -28,30 +81,37 @@ const quizAttemptSchema = new mongoose.Schema(
     class: {
       type: String,
       required: true,
+      trim: true,
     },
     section: {
       type: String,
       required: true,
+      trim: true,
     },
+    // Map of questionId -> selectedOptionId ('A', 'B', 'C', 'D')
     answers: {
       type: Map,
-      of: String, // { "1": "B", "2": "A", ... } where keys are questionIds and values are stable option IDs
+      of: String,
       default: {},
     },
-    assignedQuestions: [
+    // Detailed list of calculated answer records for admin verification
+    answerDetails: [
       {
-        questionId: {
-          type: mongoose.Schema.Types.Mixed,
-          required: true,
-        },
-        optionOrder: [
-          {
-            type: String,
-          },
-        ],
+        questionId: { type: Number, required: true },
+        selectedOptionId: { type: String, default: null },
+        isCorrect: { type: Boolean, default: false },
+        answeredAt: { type: Date, default: null },
       },
     ],
+    assignedQuestions: {
+      type: [assignedQuestionSchema],
+      default: [],
+    },
     startedAt: {
+      type: Date,
+      default: null,
+    },
+    expiresAt: {
       type: Date,
       default: null,
     },
@@ -81,11 +141,13 @@ const quizAttemptSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'],
+      enum: {
+        values: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'],
+        message: '{VALUE} is not a valid quiz status',
+      },
       default: 'NOT_STARTED',
       index: true,
     },
-    // Quiz Activity & Warning System
     tabSwitchCount: {
       type: Number,
       default: 0,
@@ -98,26 +160,17 @@ const quizAttemptSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    activityLogs: [
-      {
-        type: {
-          type: String,
-          enum: ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'QUIZ_STARTED', 'QUIZ_SUBMITTED'],
-          required: true,
-        },
-        timestamp: {
-          type: Date,
-          default: Date.now,
-        },
-        details: {
-          type: String,
-          default: '',
-        },
-      },
-    ],
+    activityLogs: {
+      type: [activityLogSchema],
+      default: [],
+    },
   },
   { timestamps: true }
 );
+
+// Database-level constraint: Unique attempt per student per event
+quizAttemptSchema.index({ studentId: 1, eventId: 1 }, { unique: true });
+quizAttemptSchema.index({ registerNumber: 1, eventId: 1 });
 
 export const QuizAttempt =
   mongoose.models.QuizAttempt || mongoose.model('QuizAttempt', quizAttemptSchema);

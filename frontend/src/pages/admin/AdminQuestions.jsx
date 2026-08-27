@@ -16,17 +16,38 @@ import { Button } from '../../components/ui/Button';
 import { Input, Select } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
-import { QUIZ_QUESTIONS } from '../../data/questions';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 
 export const AdminQuestions = () => {
+  const { adminToken } = useAuth();
   const { addToast } = useToast();
-  const [questions, setQuestions] = useState(QUIZ_QUESTIONS);
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState('ALL');
   const [expandedQuestion, setExpandedQuestion] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const fetchQuestions = async () => {
+    setLoading(true);
+    try {
+      const res = await api.getAdminQuestions(adminToken);
+      if (res && res.success && res.questions) {
+        setQuestions(res.questions);
+      }
+    } catch (err) {
+      console.warn('Error loading questions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchQuestions();
+  }, [adminToken]);
 
   const [newQuestion, setNewQuestion] = useState({
     category: 'JavaScript',
@@ -65,7 +86,7 @@ export const AdminQuestions = () => {
     return matchesSearch && matchesCat && matchesDiff;
   });
 
-  const handleAddQuestion = (e) => {
+  const handleAddQuestion = async (e) => {
     e.preventDefault();
     if (!newQuestion.question.trim() || !newQuestion.optA.trim() || !newQuestion.optB.trim()) {
       addToast('Please fill in the question and options.', 'warning', 3000);
@@ -74,6 +95,7 @@ export const AdminQuestions = () => {
 
     const created = {
       id: questions.length + 1,
+      questionId: questions.length + 1,
       category: newQuestion.category,
       difficulty: newQuestion.difficulty,
       question: newQuestion.question,
@@ -88,9 +110,19 @@ export const AdminQuestions = () => {
       explanation: newQuestion.explanation || 'Created by Event Admin.',
     };
 
-    setQuestions([...questions, created]);
-    setIsAddModalOpen(false);
-    addToast('Question added successfully to question bank!', 'success', 3000);
+    try {
+      const res = await api.addAdminQuestion(adminToken, created);
+      if (res && res.success) {
+        setQuestions([...questions, res.question || created]);
+        setIsAddModalOpen(false);
+        addToast('Question added successfully to question bank!', 'success', 3000);
+      } else {
+        addToast(res?.message || 'Error adding question.', 'error', 4000);
+      }
+    } catch (err) {
+      addToast('Network error adding question.', 'error', 4000);
+    }
+
     setNewQuestion({
       category: 'JavaScript',
       difficulty: 'Medium',
@@ -166,7 +198,16 @@ export const AdminQuestions = () => {
 
       {/* Questions Accordion List */}
       <div className="space-y-4">
-        {filteredQuestions.map((q) => {
+        {loading ? (
+          <Card variant="default" className="p-12 text-center text-drabDark/60 bg-white border border-teaGreen-300">
+            <div className="text-xs font-semibold">Loading questions bank from server...</div>
+          </Card>
+        ) : filteredQuestions.length === 0 ? (
+          <Card variant="default" className="p-12 text-center text-drabDark/60 bg-white border border-teaGreen-300">
+            <div className="text-xs font-semibold">No questions found matching the selected filter criteria.</div>
+          </Card>
+        ) : (
+          filteredQuestions.map((q) => {
           const isExpanded = expandedQuestion === q.id;
           return (
             <Card
@@ -272,7 +313,7 @@ export const AdminQuestions = () => {
               )}
             </Card>
           );
-        })}
+        }))}
       </div>
 
       {/* Add Question Modal */}

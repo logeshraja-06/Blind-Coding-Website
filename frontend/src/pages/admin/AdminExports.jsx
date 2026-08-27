@@ -11,19 +11,21 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../context/ToastContext';
+import { API_BASE_URL } from '../../services/api';
 
 export const AdminExports = () => {
   const { addToast } = useToast();
   const [downloading, setDownloading] = useState(null);
 
   const handleExport = (type) => {
+    const token = localStorage.getItem('blindcode_admin_token') || '';
     setDownloading(type);
     if (type === 'pdf') {
-      window.open('http://localhost:5000/api/export/pdf', '_blank');
+      window.open(`${API_BASE_URL}/export/pdf?token=${encodeURIComponent(token)}`, '_blank');
       addToast('Generating official PDF merit report...', 'success', 3500);
       setDownloading(null);
     } else if (type === 'xlsx' || type === 'csv') {
-      window.location.href = 'http://localhost:5000/api/export/xlsx';
+      window.location.href = `${API_BASE_URL}/export/${type}?token=${encodeURIComponent(token)}`;
       addToast('Downloading official participant spreadsheet...', 'success', 3500);
       setDownloading(null);
     }
@@ -159,7 +161,7 @@ export const AdminExports = () => {
               Raw Submissions CSV Data
             </h4>
             <p className="text-xs text-drabDark/60">
-              Plain text comma-separated values for custom analytics and database imports
+              Plain text comma-separated values for custom institutional analytics and departmental records
             </p>
           </div>
         </div>

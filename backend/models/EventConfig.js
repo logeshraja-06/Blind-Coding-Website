@@ -2,17 +2,28 @@ import mongoose from 'mongoose';
 
 const eventConfigSchema = new mongoose.Schema(
   {
+    eventId: {
+      type: String,
+      required: true,
+      unique: true,
+      default: 'BLIND_CODING_2026',
+      index: true,
+    },
     eventTitle: {
       type: String,
       default: 'BLIND CODING',
+      trim: true,
     },
     quizDurationMinutes: {
       type: Number,
       default: 60,
+      min: 1,
+      max: 180,
     },
     totalQuestions: {
       type: Number,
       default: 25,
+      min: 1,
     },
     eventStartAt: {
       type: Date,
@@ -30,6 +41,7 @@ const eventConfigSchema = new mongoose.Schema(
     maxActivityWarnings: {
       type: Number,
       default: 2,
+      min: 1,
     },
     autoSubmitOnWarningLimit: {
       type: Boolean,

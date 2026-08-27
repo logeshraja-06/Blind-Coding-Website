@@ -54,28 +54,24 @@ export const Quiz = () => {
     isOpen: false,
     type: 'TAB_SWITCH', // 'TAB_SWITCH' | 'FULLSCREEN_EXIT' | 'LIMIT_REACHED'
     currentWarning: 1,
-    countdown: 3,
+    status: 'idle', // 'idle' | 'submitting' | 'success' | 'error'
+    error: null,
   });
 
   const [isLocked, setIsLocked] = useState(false);
 
-  // State guards for debounced / single-fire event listeners
+  // Single-submission lock ref and deduplication timestamp refs
+  const submissionLockRef = useRef(false);
+  const lastActivityTimestampRef = useRef(0);
   const wasHiddenRef = useRef(false);
-  const lastFullscreenCheckRef = useRef(Date.now());
-  const autoSubmitTimerRef = useRef(null);
-  const limitReachedTriggeredRef = useRef(false);
   const pendingSaveRef = useRef(null);
 
   const maxWarnings = activityWarnings?.maxWarnings || eventConfig?.maxActivityWarnings || 2;
 
-  // Cleanup on unmount for safety and hygiene
+  // Cleanup on unmount for hygiene
   useEffect(() => {
     return () => {
-      if (autoSubmitTimerRef.current) {
-        clearInterval(autoSubmitTimerRef.current);
-        autoSubmitTimerRef.current = null;
-      }
-      limitReachedTriggeredRef.current = false;
+      submissionLockRef.current = false;
     };
   }, []);
 
@@ -89,55 +85,120 @@ export const Quiz = () => {
   }, [participant, quizStatus, navigate]);
 
   const handleSelectOption = useCallback((optionId) => {
-    if (!isLocked && currentQuestion?.id) {
-      pendingSaveRef.current = selectAnswer(currentQuestion.id, optionId);
-    }
-  }, [isLocked, selectAnswer, currentQuestion?.id]);
-
-  const handleFinalAutoSubmit = useCallback(async () => {
-    try {
-      if (pendingSaveRef.current) {
-        await pendingSaveRef.current; // ensure last answer save (incl. its single retry) has landed
+    if (!isLocked && !submissionLockRef.current && currentQuestion) {
+      const qId = currentQuestion.questionId !== undefined ? currentQuestion.questionId : currentQuestion.id;
+      if (qId !== undefined && qId !== null) {
+        pendingSaveRef.current = selectAnswer(qId, optionId);
       }
-    } catch (e) {
-      console.warn('Pending answer save did not resolve before auto-submit:', e);
-    } finally {
-      await submitQuiz(true);
-      navigate('/result');
+    }
+  }, [isLocked, selectAnswer, currentQuestion]);
+
+  // Robust Auto-Submission Handler (with brief pending save wait and safe 3-attempt retry)
+  const performAutoSubmission = useCallback(async () => {
+    setWarningModal((prev) => ({
+      ...prev,
+      isOpen: true,
+      type: 'LIMIT_REACHED',
+      status: 'submitting',
+      error: null,
+    }));
+
+    // 1. Wait briefly (max 800ms) for any in-flight answer save to complete
+    if (pendingSaveRef.current) {
+      try {
+        await Promise.race([
+          pendingSaveRef.current,
+          new Promise((r) => setTimeout(r, 800)),
+        ]);
+      } catch (e) {
+        console.warn('In-flight save wait completed:', e);
+      }
+    }
+
+    // 2. Submit with robust retry mechanism (up to 3 attempts with backoff)
+    let finalResult = null;
+    let submitError = null;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        finalResult = await submitQuiz(true);
+        if (finalResult && typeof finalResult.score === 'number') {
+          break;
+        }
+      } catch (err) {
+        console.error(`Auto-submission attempt ${attempt} failed:`, err);
+        submitError = err?.message || 'Failed to submit assessment to server.';
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 800 * attempt));
+        }
+      }
+    }
+
+    if (finalResult && typeof finalResult.score === 'number') {
+      setWarningModal((prev) => ({ ...prev, status: 'success' }));
+      setTimeout(() => {
+        navigate('/result');
+      }, 400);
+    } else {
+      // Display clear recovery error state with retry button — NEVER leave stuck on infinite loading
+      setWarningModal((prev) => ({
+        ...prev,
+        status: 'error',
+        error: submitError || 'Connection issue submitting assessment. Your answers are preserved locally.',
+      }));
     }
   }, [submitQuiz, navigate]);
 
-  // Check if warning limit reached from backend state (guarded: run once)
-  const handleWarningLimitReached = useCallback(() => {
-    if (limitReachedTriggeredRef.current) return; // guard: only run once
-    limitReachedTriggeredRef.current = true;
-
-    if (autoSubmitTimerRef.current) {
-      clearInterval(autoSubmitTimerRef.current);
-      autoSubmitTimerRef.current = null;
-    }
-
+  // Immediately lock quiz and initiate auto-submit when limit is reached
+  const triggerAutoSubmitLock = useCallback(() => {
+    if (submissionLockRef.current) return; // run once
+    submissionLockRef.current = true;
     setIsLocked(true);
+
     setWarningModal({
       isOpen: true,
       type: 'LIMIT_REACHED',
       currentWarning: maxWarnings,
-      countdown: 3,
+      status: 'submitting',
+      error: null,
     });
 
-    let count = 3;
-    const interval = setInterval(() => {
-      count -= 1;
-      setWarningModal((prev) => ({ ...prev, countdown: Math.max(0, count) }));
-      if (count <= 0) {
-        clearInterval(interval);
-        autoSubmitTimerRef.current = null;
-        handleFinalAutoSubmit();
-      }
-    }, 1000);
+    performAutoSubmission();
+  }, [maxWarnings, performAutoSubmission]);
 
-    autoSubmitTimerRef.current = interval;
-  }, [maxWarnings, handleFinalAutoSubmit]);
+  // Unified activity event processing with robust client-side deduplication
+  const processActivityEvent = useCallback(async (activityType) => {
+    if (quizStatus !== 'in_progress' || isLocked || submissionLockRef.current) return;
+
+    // Client-side debouncing: ignore duplicate events within 2000ms
+    const now = Date.now();
+    if (now - lastActivityTimestampRef.current < 2000) return;
+    lastActivityTimestampRef.current = now;
+
+    try {
+      const res = await recordActivity(activityType);
+      if (!res) return;
+
+      const warnCount = res.totalWarnings || 1;
+      const limitReached = Boolean(
+        res.shouldAutoSubmit || res.autoSubmitRequired || warnCount >= maxWarnings
+      );
+
+      if (limitReached) {
+        triggerAutoSubmitLock();
+      } else {
+        setWarningModal({
+          isOpen: true,
+          type: activityType,
+          currentWarning: warnCount,
+          status: 'idle',
+          error: null,
+        });
+      }
+    } catch (err) {
+      console.warn('Error recording activity event:', err);
+    }
+  }, [quizStatus, isLocked, maxWarnings, recordActivity, triggerAutoSubmitLock]);
 
   // 1. FULLSCREEN EXIT DETECTION
   useEffect(() => {
@@ -151,25 +212,9 @@ export const Quiz = () => {
           document.msFullscreenElement
       );
 
-      // Debounce rapid window changes
-      const now = Date.now();
-      if (now - lastFullscreenCheckRef.current < 1200) return;
-      lastFullscreenCheckRef.current = now;
-
-      if (!isFullscreen && quizStatus === 'in_progress' && !isLocked) {
-        const res = await recordActivity('FULLSCREEN_EXIT');
-        const warnCount = res?.totalWarnings || (activityWarnings?.totalWarnings || 0) + 1;
-
-        if (res?.shouldAutoSubmit || warnCount >= maxWarnings) {
-          handleWarningLimitReached();
-        } else {
-          setWarningModal({
-            isOpen: true,
-            type: 'FULLSCREEN_EXIT',
-            currentWarning: warnCount,
-            countdown: 3,
-          });
-        }
+      // Only trigger warning when exiting fullscreen
+      if (!isFullscreen && quizStatus === 'in_progress' && !isLocked && !submissionLockRef.current) {
+        await processActivityEvent('FULLSCREEN_EXIT');
       }
     };
 
@@ -184,9 +229,9 @@ export const Quiz = () => {
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
-  }, [quizStatus, isLocked, eventConfig?.fullscreenRequired, recordActivity, activityWarnings, maxWarnings, handleWarningLimitReached]);
+  }, [quizStatus, isLocked, eventConfig?.fullscreenRequired, processActivityEvent]);
 
-  // 2. TAB SWITCH & VISIBILITY CHANGE DETECTION (Single hide→show cycle guard)
+  // 2. TAB SWITCH & VISIBILITY CHANGE DETECTION (Deduplicated single leave-and-return cycle)
   useEffect(() => {
     if (quizStatus !== 'in_progress' || eventConfig?.tabSwitchMonitoring === false) return;
 
@@ -194,22 +239,10 @@ export const Quiz = () => {
       if (document.hidden) {
         wasHiddenRef.current = true;
       } else {
-        // Transition from hidden -> visible
-        if (wasHiddenRef.current && !isLocked && quizStatus === 'in_progress') {
+        // User returned to the tab
+        if (wasHiddenRef.current && quizStatus === 'in_progress' && !isLocked && !submissionLockRef.current) {
           wasHiddenRef.current = false;
-          const res = await recordActivity('TAB_SWITCH');
-          const warnCount = res?.totalWarnings || (activityWarnings?.totalWarnings || 0) + 1;
-
-          if (res?.shouldAutoSubmit || warnCount >= maxWarnings) {
-            handleWarningLimitReached();
-          } else {
-            setWarningModal({
-              isOpen: true,
-              type: 'TAB_SWITCH',
-              currentWarning: warnCount,
-              countdown: 3,
-            });
-          }
+          await processActivityEvent('TAB_SWITCH');
         }
       }
     };
@@ -219,21 +252,9 @@ export const Quiz = () => {
     };
 
     const handleWindowFocus = async () => {
-      if (wasHiddenRef.current && !isLocked && quizStatus === 'in_progress') {
+      if (wasHiddenRef.current && quizStatus === 'in_progress' && !isLocked && !submissionLockRef.current) {
         wasHiddenRef.current = false;
-        const res = await recordActivity('TAB_SWITCH');
-        const warnCount = res?.totalWarnings || (activityWarnings?.totalWarnings || 0) + 1;
-
-        if (res?.shouldAutoSubmit || warnCount >= maxWarnings) {
-          handleWarningLimitReached();
-        } else {
-          setWarningModal({
-            isOpen: true,
-            type: 'TAB_SWITCH',
-            currentWarning: warnCount,
-            countdown: 3,
-          });
-        }
+        await processActivityEvent('TAB_SWITCH');
       }
     };
 
@@ -245,14 +266,13 @@ export const Quiz = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
-      if (autoSubmitTimerRef.current) clearInterval(autoSubmitTimerRef.current);
     };
-  }, [quizStatus, isLocked, eventConfig?.tabSwitchMonitoring, recordActivity, activityWarnings, maxWarnings, handleWarningLimitReached]);
+  }, [quizStatus, isLocked, eventConfig?.tabSwitchMonitoring, processActivityEvent]);
 
   // Keyboard navigation support
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (isLocked) return;
+      if (isLocked || submissionLockRef.current) return;
       if (['input', 'textarea', 'select'].includes(e.target.tagName.toLowerCase())) {
         return;
       }
@@ -280,7 +300,7 @@ export const Quiz = () => {
       setSubmitModalOpen(false);
       navigate('/result');
     } catch (err) {
-      console.error(err);
+      console.error('Manual submission error:', err);
       setIsSubmitting(false);
     }
   };
@@ -298,13 +318,14 @@ export const Quiz = () => {
         docEl.msRequestFullscreen();
       }
     } catch (e) {
-      console.warn('Re-request fullscreen failed:', e);
+      console.warn('Re-request fullscreen notice:', e);
     }
   };
 
   const isLastQuestion = currentIndex === totalQuestions - 1;
-  const currentSelectedOption = answers[currentQuestion?.id] || null;
-  const currentSaveStatus = saveStatusMap[currentQuestion?.id] || 'idle';
+  const currentQId = currentQuestion ? (currentQuestion.questionId !== undefined ? currentQuestion.questionId : currentQuestion.id) : null;
+  const currentSelectedOption = currentQId !== null ? (answers[currentQId] || answers[String(currentQId)] || null) : null;
+  const currentSaveStatus = currentQId !== null ? (saveStatusMap[currentQId] || saveStatusMap[String(currentQId)] || 'idle') : 'idle';
 
   return (
     <PageTransition className="bg-ivory pb-20 lg:pb-8">
@@ -314,7 +335,7 @@ export const Quiz = () => {
         totalQuestions={totalQuestions}
         remainingSeconds={remainingSeconds}
         answeredCount={answeredCount}
-        onOpenSubmitModal={() => !isLocked && setSubmitModalOpen(true)}
+        onOpenSubmitModal={() => !isLocked && !submissionLockRef.current && setSubmitModalOpen(true)}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 relative font-poppins">
@@ -331,7 +352,7 @@ export const Quiz = () => {
               selectedOption={currentSelectedOption}
               onSelectOption={handleSelectOption}
               saveStatus={currentSaveStatus}
-              disabled={isLocked}
+              disabled={isLocked || submissionLockRef.current}
             />
 
             {/* Quiz Navigation Controls */}
@@ -340,7 +361,7 @@ export const Quiz = () => {
                 <Button
                   variant="outline"
                   onClick={prevQuestion}
-                  disabled={currentIndex === 0 || isLocked}
+                  disabled={currentIndex === 0 || isLocked || submissionLockRef.current}
                   icon={ArrowLeft}
                   iconPosition="left"
                   className="font-semibold text-xs sm:text-sm"
@@ -348,7 +369,7 @@ export const Quiz = () => {
                   PREVIOUS
                 </Button>
 
-                {currentSelectedOption && !isLocked && (
+                {currentSelectedOption && !isLocked && !submissionLockRef.current && (
                   <button
                     type="button"
                     onClick={() => clearAnswer(currentQuestion.id)}
@@ -364,7 +385,7 @@ export const Quiz = () => {
                   <Button
                     variant="primary"
                     onClick={() => setSubmitModalOpen(true)}
-                    disabled={isLocked}
+                    disabled={isLocked || submissionLockRef.current}
                     icon={Send}
                     iconPosition="right"
                     className="font-bold text-xs sm:text-sm bg-drabDark hover:bg-drabDark-700 border-drabDark-800"
@@ -375,7 +396,7 @@ export const Quiz = () => {
                   <Button
                     variant="primary"
                     onClick={nextQuestion}
-                    disabled={isLocked}
+                    disabled={isLocked || submissionLockRef.current}
                     icon={ArrowRight}
                     iconPosition="right"
                     className="font-bold text-xs sm:text-sm shadow-md"
@@ -397,11 +418,12 @@ export const Quiz = () => {
 
           {/* Question Navigator */}
           <QuestionNavigator
+            questions={questions}
             totalQuestions={totalQuestions}
             currentIndex={currentIndex}
             answers={answers}
-            onSelectQuestion={isLocked ? () => {} : goToQuestion}
-            onOpenSubmitModal={() => !isLocked && setSubmitModalOpen(true)}
+            onSelectQuestion={isLocked || submissionLockRef.current ? () => {} : goToQuestion}
+            onOpenSubmitModal={() => !isLocked && !submissionLockRef.current && setSubmitModalOpen(true)}
           />
         </div>
       </main>
@@ -423,9 +445,11 @@ export const Quiz = () => {
         type={warningModal.type}
         currentWarning={warningModal.currentWarning}
         maxWarnings={maxWarnings}
-        countdown={warningModal.countdown}
+        status={warningModal.status || 'idle'}
+        error={warningModal.error}
         onAcknowledge={() => setWarningModal((prev) => ({ ...prev, isOpen: false }))}
         onReturnFullscreen={handleReturnToFullscreen}
+        onRetrySubmit={performAutoSubmission}
       />
     </PageTransition>
   );
