@@ -5,7 +5,13 @@
  * The backend remains the single source of truth.
  */
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const getSanitizedApiUrl = () => {
+  const envUrl = (import.meta.env.VITE_API_URL || '/api').trim().replace(/\/$/, '');
+  if (envUrl === '/api' || envUrl === '') return '/api';
+  return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+};
+
+export const API_BASE_URL = getSanitizedApiUrl();
 
 export const api = {
   // 1. Student Registration

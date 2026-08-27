@@ -25,33 +25,47 @@ app.use(
   })
 );
 
-// Restricted CORS Configuration (Using CLIENT_URL from environment)
-const rawClientUrls = process.env.CLIENT_URL || 'http://localhost:5173,http://localhost:5174,http://localhost:5175';
-const allowedOrigins = rawClientUrls
-  .split(',')
-  .map((url) => url.trim().replace(/\/$/, ''))
-  .filter(Boolean);
+// Comprehensive CORS Configuration (Supporting Vercel, Localhost, and custom CLIENT_URL)
+const defaultOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://127.0.0.1:5173',
+  'https://blind-coding-website.vercel.app',
+];
+
+const envOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(',').map((url) => url.trim().replace(/\/$/, ''))
+  : [];
+
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins])).filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow non-browser agents (Postman, curl, internal server calls)
+    // Allow non-browser requests (Postman, mobile apps, server-to-server)
     if (!origin) return callback(null, true);
 
-    const isAllowed =
-      allowedOrigins.includes(origin) ||
-      (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:'));
+    const cleanOrigin = origin.trim().replace(/\/$/, '');
 
-    if (isAllowed) {
+    const isExplicitlyAllowed = allowedOrigins.includes(cleanOrigin);
+    const isVercelDomain = cleanOrigin.endsWith('.vercel.app') || cleanOrigin.includes('vercel.app');
+    const isLocalhost = cleanOrigin.startsWith('http://localhost:') || cleanOrigin.startsWith('http://127.0.0.1:');
+
+    if (isExplicitlyAllowed || isVercelDomain || isLocalhost) {
       return callback(null, true);
     }
+
+    console.warn(`⚠️ [CORS REJECTED] Origin not permitted: ${origin}`);
     return callback(new Error(`CORS Error: Origin ${origin} not permitted by security policy.`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(generalLimiter);
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
