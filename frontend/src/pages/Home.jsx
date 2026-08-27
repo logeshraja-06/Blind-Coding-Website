@@ -32,23 +32,10 @@ import { Card } from '../components/ui/Card';
 import { PageTransition } from '../components/layout/PageTransition';
 import { TechForceLogo } from '../assets/logo/TechForceLogo';
 
+import heroOptJpg from '../assets/images/hero_competitive_coding_opt.jpg';
+
 export const Home = () => {
   const navigate = useNavigate();
-
-  // Interactive Sample Puzzle on Hero Right Column (State Only, No Lag)
-  const [selectedSampleOpt, setSelectedSampleOpt] = useState('A');
-  const [sampleFeedback, setSampleFeedback] = useState(true);
-
-  const handleSampleChoice = (opt) => {
-    setSelectedSampleOpt(opt);
-    setSampleFeedback(opt === 'A');
-  };
-
-  const eventHighlights = [
-    { label: '25 Questions', sub: 'Logic & Reasoning MCQs', icon: Terminal },
-    { label: '60 Minutes', sub: 'Synchronized Timer', icon: Clock },
-    { label: 'One Official Attempt', sub: 'Strict Security', icon: UserCheck },
-  ];
 
   const competitionPillars = [
     {
@@ -124,55 +111,76 @@ export const Home = () => {
     },
   ];
 
+  // Motion Variants for Staggered Entrance Animation
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.05,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+    },
+  };
+
   return (
     <PageTransition>
       <Navbar />
 
-      <main className="flex-1 bg-[#FAFBF8] font-poppins text-[#18231F] overflow-hidden">
+      <main className="flex-1 bg-[#FBFCEE] font-poppins text-[#343B1B] overflow-hidden">
         {/* ========================================================================= */}
-        {/* HERO SECTION — MINIMAL PREMIUM EDITORIAL LAYOUT */}
+        {/* HERO SECTION — PREMIUM LIGHT EDITORIAL COMPOSITION */}
         {/* ========================================================================= */}
-        <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          {/* Subtle Ambient Background Gradients */}
+        <section className="relative pt-28 pb-16 lg:pt-36 lg:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          {/* Subtle Ambient Background Accents */}
           <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
-            <div className="absolute top-12 left-1/4 w-96 h-96 bg-[#39716B]/5 rounded-full blur-3xl" />
-            <div className="absolute top-24 right-10 w-[30rem] h-[30rem] bg-[#3971B8]/5 rounded-full blur-3xl" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#18231F05_1px,transparent_1px),linear-gradient(to_bottom,#18231F05_1px,transparent_1px)] bg-[size:3rem_3rem]" />
+            <div className="absolute top-12 left-1/4 w-96 h-96 bg-[#3971B8]/5 rounded-full blur-3xl" />
+            <div className="absolute top-24 right-10 w-[30rem] h-[30rem] bg-[#C8D696]/20 rounded-full blur-3xl" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#343B1B08_1px,transparent_1px),linear-gradient(to_bottom,#343B1B08_1px,transparent_1px)] bg-[size:3rem_3rem]" />
           </div>
 
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-            {/* LEFT COLUMN: Editorial Content */}
-            <div className="lg:col-span-7 space-y-6 text-left">
-              {/* Professional Event Label */}
-              <div className="inline-flex items-center gap-3 px-3.5 py-1.5 rounded-md bg-[#EEF2ED] border border-[#C8D6CD] text-[#18231F]">
-                <TechForceLogo className="w-5 h-5 flex-shrink-0" showText={false} />
-                <div className="text-left leading-tight">
-                  <span className="text-xs font-bold uppercase tracking-wider block text-[#18231F]">
-                    TECH FORCE
-                  </span>
-                  <span className="text-[10px] font-medium text-[#52605A] block uppercase">
-                    CSE STUDENT ASSOCIATION
-                  </span>
-                </div>
-              </div>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center"
+          >
+            {/* LEFT COLUMN: Editorial Content & Actions */}
+            <div className="lg:col-span-6 space-y-6 text-left">
+              {/* Official Branding Label */}
+              <motion.div variants={itemVariants} className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#EEF2ED] border border-[#C8D6CD] text-[#343B1B]">
+                <TechForceLogo className="w-4 h-4 flex-shrink-0" showText={false} />
+                <span className="text-xs font-bold uppercase tracking-wider text-[#343B1B]">TECH FORCE</span>
+                <span className="text-xs text-[#52605A]">•</span>
+                <span className="text-[10px] font-semibold text-[#52605A] uppercase tracking-wide">CSE STUDENT ASSOCIATION</span>
+              </motion.div>
 
-              {/* Main Heading & Typography */}
-              <div className="space-y-1">
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold font-comfortaa tracking-tight leading-none text-[#18231F]">
-                  BLIND <span className="text-[#39716B]">CODING</span>
+              {/* Main Headline */}
+              <motion.div variants={itemVariants} className="space-y-2">
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold font-comfortaa tracking-tight leading-none text-[#343B1B]">
+                  BLIND <span className="text-[#3971B8]">CODING</span>
                 </h1>
-                <p className="text-base sm:text-lg font-medium text-[#52605A] pt-2">
-                  A competitive programming challenge for CSE students.
+                <p className="text-xl sm:text-2xl font-bold font-comfortaa text-[#343B1B]/80 tracking-wide pt-1">
+                  Think. Trace. Solve.
                 </p>
-              </div>
+              </motion.div>
 
-              {/* Primary Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
+              {/* Action Buttons */}
+              <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
                 <Button
                   size="lg"
                   variant="primary"
                   onClick={() => navigate('/register')}
-                  className="px-7 font-bold text-base shadow-sm"
+                  className="px-7 font-bold text-base shadow-sm rounded-lg bg-[#3971B8] hover:bg-[#2d5d99] text-white border-0"
                   icon={ArrowRight}
                   iconPosition="right"
                 >
@@ -186,98 +194,50 @@ export const Home = () => {
                     const elem = document.getElementById('rules');
                     elem?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="px-6 font-semibold text-sm"
+                  className="px-6 font-semibold text-sm rounded-lg border-[#C8D6CD] text-[#343B1B] hover:bg-[#EEF2ED]"
                 >
                   VIEW RULES
                 </Button>
-              </div>
+              </motion.div>
 
-              {/* Trust & Credibility Strip */}
-              <div className="pt-2 flex items-center gap-2 text-xs font-medium text-[#52605A]">
-                <Award className="w-4 h-4 text-[#39716B] flex-shrink-0" />
-                <span>Organized by CSE Association & CSI Student Chapter • AY 2025–2026</span>
-              </div>
+              {/* Minimal Event Info Row */}
+              <motion.div variants={itemVariants} className="pt-2 flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-bold uppercase tracking-wider text-[#52605A] font-comfortaa">
+                <span>25 QUESTIONS</span>
+                <span className="text-[#3971B8]">•</span>
+                <span>60 MINUTES</span>
+                <span className="text-[#3971B8]">•</span>
+                <span>CSE STUDENTS</span>
+              </motion.div>
             </div>
 
-            {/* RIGHT COLUMN: Code Workspace Visual (Light Editorial Tone) */}
-            <div className="lg:col-span-5">
-              <div className="rounded-2xl border border-[#D0DBD5] bg-white shadow-md overflow-hidden hover:-translate-y-1 transition-transform duration-300">
-                {/* Editor Header Bar */}
-                <div className="px-4 py-3 bg-[#EEF2ED] border-b border-[#D0DBD5] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-red-400" />
-                    <span className="w-3 h-3 rounded-full bg-amber-400" />
-                    <span className="w-3 h-3 rounded-full bg-[#39D98A]" />
-                    <span className="font-mono text-xs font-semibold text-[#18231F] ml-2">
-                      logic_puzzle.cpp
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-white text-[#39716B] border border-[#C8D6CD]">
-                    Mental Code Tracing
-                  </span>
-                </div>
+            {/* RIGHT COLUMN: Premium Editorial Visual Presentation */}
+            <motion.div variants={itemVariants} className="lg:col-span-6">
+              <div className="relative rounded-2xl overflow-hidden border border-[#C8D6CD] bg-white shadow-xl group">
+                <img
+                  src={heroOptJpg}
+                  alt="Tech Force Blind Coding Competitive Programming Assessment"
+                  width="960"
+                  height="640"
+                  loading="eager"
+                  decoding="async"
+                  className="w-full h-auto object-cover object-center max-h-[420px] transition-transform duration-500 group-hover:scale-[1.01]"
+                />
+                
+                {/* Subtle Editorial Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#343B1B]/40 via-transparent to-transparent pointer-events-none" />
 
-                {/* Code Snippet */}
-                <div className="p-4 bg-[#18231F] text-white font-mono text-xs leading-relaxed text-left">
-                  <div className="text-gray-400">// Evaluate without running terminal execution</div>
-                  <div className="text-cyan-300">#include &lt;iostream&gt;</div>
-                  <div className="text-cyan-300">using namespace std;</div>
-                  <div className="pt-1.5"><span className="text-amber-300">int</span> <span className="text-[#39D98A]">main</span>() {'{'}</div>
-                  <div className="pl-4 text-gray-200"><span className="text-amber-300">int</span> arr[] = {'{'}10, 20, 30, 40{'}'};</div>
-                  <div className="pl-4 text-gray-200"><span className="text-amber-300">int</span> *ptr = arr;</div>
-                  <div className="pl-4 text-[#39D98A]">cout &lt;&lt; *(ptr + 2) &lt;&lt; <span className="text-amber-300">" "</span> &lt;&lt; *ptr + 2;</div>
-                  <div className="pl-4 text-amber-300">return 0;</div>
-                  <div>{'}'}</div>
-                </div>
-
-                {/* Interactive Sample Choices */}
-                <div className="p-4 bg-white space-y-3 text-left">
-                  <div className="text-xs font-semibold text-[#52605A] uppercase tracking-wider">
-                    Interactive Sample MCQ Preview
+                {/* Restrained Technical Tag Overlay */}
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+                  <div className="px-3.5 py-1.5 rounded-lg bg-white/90 backdrop-blur-md border border-white/50 text-xs font-mono font-bold text-[#343B1B] shadow-sm">
+                    PYTHON • JAVA • SQL
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: 'A', text: '30 12', correct: true },
-                      { id: 'B', text: '30 30', correct: false },
-                      { id: 'C', text: '20 12', correct: false },
-                      { id: 'D', text: '30 20', correct: false },
-                    ].map((opt) => {
-                      const isChosen = selectedSampleOpt === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => handleSampleChoice(opt.id)}
-                          className={`p-2.5 rounded-md border text-xs font-mono font-semibold flex items-center justify-between transition-colors cursor-pointer ${
-                            isChosen
-                              ? 'bg-[#39716B] text-white border-[#39716B]'
-                              : 'bg-[#F8FAF7] text-[#18231F] border-[#D0DBD5] hover:bg-[#EEF2ED]'
-                          }`}
-                        >
-                          <span>[{opt.id}] {opt.text}</span>
-                          {isChosen && <Check className="w-3.5 h-3.5" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Feedback line */}
-                  <div className="pt-2 text-[11px] font-medium text-[#52605A]">
-                    {sampleFeedback ? (
-                      <span className="text-[#39716B] font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#39716B]" />
-                        Correct! `*(ptr + 2)` evaluates to 30, and `*ptr + 2` evaluates to 12.
-                      </span>
-                    ) : (
-                      <span className="text-amber-700">
-                        Notice operator precedence: `*(ptr+2)` accesses element index 2, while `*ptr + 2` adds 2 to element 0.
-                      </span>
-                    )}
+                  <div className="px-3 py-1 rounded-lg bg-[#3971B8]/90 text-white text-xs font-mono font-semibold backdrop-blur-md shadow-sm">
+                    AY 2025–2026
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </section>
 
         {/* ========================================================================= */}

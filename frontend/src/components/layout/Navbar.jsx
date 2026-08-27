@@ -51,17 +51,17 @@ export const Navbar = () => {
     <header
       className={`fixed top-0 left-0 right-0 z-40 transition-all duration-200 ${
         isScrolled
-          ? 'py-2.5 bg-[#FAFBF8]/95 backdrop-blur-md border-b border-[#D0DBD5] shadow-sm'
-          : 'py-3.5 bg-[#FAFBF8]/90 backdrop-blur-md border-b border-[#D0DBD5]/60'
+          ? 'py-2.5 bg-[#FBFCEE]/95 backdrop-blur-md border-b border-[#C8D6CD] shadow-sm'
+          : 'py-3.5 bg-[#FBFCEE]/90 backdrop-blur-md border-b border-[#C8D6CD]/60'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Brand: TECH FORCE Logo + BLIND CODING */}
         <Link to="/" className="flex items-center gap-3 group focus-ring rounded-lg px-1 py-0.5">
           <TechForceLogo className="w-9 h-9 group-hover:scale-105 transition-transform" />
-          <div className="border-l border-[#18231F]/20 pl-3">
-            <span className="font-comfortaa font-bold text-base sm:text-lg tracking-tight block leading-none text-[#18231F]">
-              BLIND <span className="text-[#39716B]">CODING</span>
+          <div className="border-l border-[#343B1B]/20 pl-3">
+            <span className="font-comfortaa font-bold text-base sm:text-lg tracking-tight block leading-none text-[#343B1B]">
+              BLIND <span className="text-[#3971B8]">CODING</span>
             </span>
             <span className="text-[10px] font-semibold tracking-wider uppercase block mt-0.5 text-[#52605A]">
               CSE Dept • AY 2025–2026
@@ -70,12 +70,12 @@ export const Navbar = () => {
         </Link>
 
         {/* Desktop Nav Links */}
-        <nav className="hidden md:flex items-center gap-1 px-3 py-1 rounded-lg border border-[#D0DBD5] bg-white shadow-xs">
+        <nav className="hidden md:flex items-center gap-1 px-3 py-1 rounded-lg border border-[#C8D6CD] bg-white shadow-xs">
           {navLinks.map((link) => (
             <button
               key={link.name}
               onClick={() => handleNavClick(link.path)}
-              className="px-3.5 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer text-[#52605A] hover:text-[#39716B] hover:bg-[#F3F6F1]"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer text-[#343B1B] hover:text-[#3971B8] hover:bg-[#EEF2ED]"
             >
               {link.name}
             </button>
