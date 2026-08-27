@@ -76,7 +76,7 @@ export const INITIAL_QUESTIONS = [
 print(func(1))
 print(func(2))`,
     tableData: null,
-    outputBlock: `[1]\n[1, 2]`,
+    outputBlock: null,
     options: [
       { id: "A", text: "[1] then [2]" },
       { id: "B", text: "[1] then [1, 2]" },
@@ -411,7 +411,7 @@ for (int i = 1; i <= n; i++) {
     System.out.println();
 }`,
     tableData: null,
-    outputBlock: `1\n12\n123\n1234`,
+    outputBlock: null,
     options: [
       { id: "A", text: "1\n12\n123\n1234" },
       { id: "B", text: "1234\n123\n12\n1" },
@@ -435,7 +435,7 @@ for (int i = n; i >= 1; i--) {
     System.out.println();
 }`,
     tableData: null,
-    outputBlock: `****\n***\n**\n*`,
+    outputBlock: null,
     options: [
       { id: "A", text: "****\n***\n**\n*" },
       { id: "B", text: "*\n**\n***\n****" },
@@ -584,19 +584,20 @@ export const seedDatabase = async () => {
     console.log('✅ [SEED] Exactly 25 structured questions (10 Python, 10 Java, 5 SQL) successfully persisted.');
 
     // Seed Default Admin Account (Idempotent)
-    const adminEmail = 'admin@cse.techforce.edu';
+    const adminEmail = (process.env.DEFAULT_ADMIN_EMAIL || 'admin@cse.techforce.edu').trim().toLowerCase();
+    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'Admin@2026';
     const existingAdmin = await Admin.findOne({ email: adminEmail });
     if (!existingAdmin) {
       console.log('🌱 [SEED] Initializing default Event Administrator...');
       const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash('Admin@2026', salt);
+      const hashedPassword = await bcrypt.hash(adminPassword, salt);
       await Admin.create({
         name: 'TECH FORCE Convenor',
         email: adminEmail,
         password: hashedPassword,
         role: 'EVENT_ADMIN',
       });
-      console.log(`✅ [SEED] Event Admin registered (${adminEmail} / Admin@2026).`);
+      console.log(`✅ [SEED] Event Admin registered (${adminEmail}).`);
     }
 
     // Seed Event Configuration (Idempotent)

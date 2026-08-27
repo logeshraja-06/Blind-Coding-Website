@@ -44,13 +44,13 @@ export const Button = ({
 
   return (
     <motion.button
-      whileHover={disabled || isLoading ? {} : { y: -2 }}
-      whileTap={disabled || isLoading ? {} : { y: 0, scale: 0.98 }}
+      whileHover={disabled || isLoading ? {} : { scale: 1.01 }}
+      whileTap={disabled || isLoading ? {} : { scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 450, damping: 25 }}
       type={type}
       disabled={disabled || isLoading}
       onClick={onClick}
-      className={`group relative inline-flex items-center justify-center transition-all duration-200 select-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-celticBlue focus:ring-offset-2 focus:ring-offset-ivory disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none ${sizeStyles[size]} ${variantStyles[variant] || variantStyles.primary} ${className}`}
+      className={`group relative inline-flex items-center justify-center premium-btn transition-all duration-200 select-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-celticBlue focus:ring-offset-2 focus:ring-offset-ivory disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none ${sizeStyles[size]} ${variantStyles[variant] || variantStyles.primary} ${className}`}
       {...props}
     >
       {isLoading ? (

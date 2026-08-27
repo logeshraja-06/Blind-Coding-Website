@@ -14,8 +14,8 @@ export const AdminLogin = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState('admin@cse.techforce.edu');
-  const [password, setPassword] = useState('Admin@2026');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 

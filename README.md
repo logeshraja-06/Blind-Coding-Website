@@ -60,7 +60,7 @@ cd backend
 npm install
 npm run dev
 ```
-The server will start on `http://localhost:5000` with pre-seeded questions, default admin (`admin@cse.techforce.edu` / `Admin@2026`), and demo data.
+The server will start on `http://localhost:5000` with pre-seeded structured questions and configured admin authentication parameters.
 
 ### 2. Start the Frontend Development Server
 ```powershell
@@ -112,10 +112,9 @@ Blind-Coding-Website/
 
 ---
 
-## 🔑 Default Administrator Credentials
-* **Email**: `admin@cse.techforce.edu`
-* **Password**: `Admin@2026`
+## 🔑 Administrator Access Setup
 * **Admin URL**: `http://localhost:5173/admin/login`
+* **Default Admin Credentials**: Configurable via `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD` environment variables (see `backend/.env`).
 
 ---
 

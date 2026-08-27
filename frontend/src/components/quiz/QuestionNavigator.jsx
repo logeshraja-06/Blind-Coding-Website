@@ -157,7 +157,7 @@ export const QuestionNavigator = ({
     <>
       {/* Desktop Sidebar (Right column) */}
       <div className="hidden lg:block w-72 flex-shrink-0">
-        <div className="sticky top-24 bg-white rounded-3xl p-6 border border-teaGreen-300 shadow-premium">
+        <div className="sticky top-24 bg-white rounded-3xl p-6 border border-teaGreen-300 shadow-premium premium-card">
           {gridContent}
         </div>
       </div>

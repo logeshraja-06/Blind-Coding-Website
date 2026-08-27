@@ -21,11 +21,11 @@ export const Card = ({
   const Component = hoverEffect ? motion.div : 'div';
   const hoverProps = hoverEffect
     ? {
-        whileHover: { y: -3, transition: { duration: 0.2, ease: 'easeOut' } },
-        className: `rounded-xl transition-all duration-200 ${variantStyles[variant]} ${className}`,
+        whileHover: { y: -2, transition: { duration: 0.2, ease: 'easeOut' } },
+        className: `rounded-xl premium-card ${variantStyles[variant]} ${className}`,
       }
     : {
-        className: `rounded-xl ${variantStyles[variant]} ${className}`,
+        className: `rounded-xl premium-card ${variantStyles[variant]} ${className}`,
       };
 
   return (

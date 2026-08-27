@@ -65,7 +65,7 @@ export const QUIZ_QUESTIONS = [
 print(func(1))
 print(func(2))`,
     tableData: null,
-    outputBlock: `[1]\n[1, 2]`,
+    outputBlock: null,
     options: [
       { id: "A", text: "[1] then [2]" },
       { id: "B", text: "[1] then [1, 2]" },
@@ -370,7 +370,7 @@ for (int i = 1; i <= n; i++) {
     System.out.println();
 }`,
     tableData: null,
-    outputBlock: `1\n12\n123\n1234`,
+    outputBlock: null,
     options: [
       { id: "A", text: "1\n12\n123\n1234" },
       { id: "B", text: "1234\n123\n12\n1" },
@@ -392,7 +392,7 @@ for (int i = n; i >= 1; i--) {
     System.out.println();
 }`,
     tableData: null,
-    outputBlock: `****\n***\n**\n*`,
+    outputBlock: null,
     options: [
       { id: "A", text: "****\n***\n**\n*" },
       { id: "B", text: "*\n**\n***\n****" },

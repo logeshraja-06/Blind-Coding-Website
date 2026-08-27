@@ -130,10 +130,10 @@ export const Home = () => {
 
       <main className="flex-1 bg-[#FAFBF8] font-poppins text-[#18231F] overflow-hidden">
         {/* ========================================================================= */}
-        {/* HERO SECTION — LIGHT ASYMMETRIC EDITORIAL LAYOUT */}
+        {/* HERO SECTION — MINIMAL PREMIUM EDITORIAL LAYOUT */}
         {/* ========================================================================= */}
-        <section className="relative pt-32 pb-16 lg:pt-36 lg:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          {/* Subtle Ambient Background Gradients (Light & Elegant) */}
+        <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          {/* Subtle Ambient Background Gradients */}
           <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
             <div className="absolute top-12 left-1/4 w-96 h-96 bg-[#39716B]/5 rounded-full blur-3xl" />
             <div className="absolute top-24 right-10 w-[30rem] h-[30rem] bg-[#3971B8]/5 rounded-full blur-3xl" />
@@ -161,15 +161,10 @@ export const Home = () => {
                 <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold font-comfortaa tracking-tight leading-none text-[#18231F]">
                   BLIND <span className="text-[#39716B]">CODING</span>
                 </h1>
-                <p className="text-lg sm:text-xl font-semibold text-[#3971B8] font-comfortaa pt-2">
-                  A Competitive Programming Challenge
+                <p className="text-base sm:text-lg font-medium text-[#52605A] pt-2">
+                  A competitive programming challenge for CSE students.
                 </p>
               </div>
-
-              {/* Supporting Copy */}
-              <p className="text-sm sm:text-base text-[#52605A] leading-relaxed max-w-xl font-normal">
-                Think logically. Read carefully. Solve confidently. Put your programming knowledge to the test.
-              </p>
 
               {/* Primary Action Buttons */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
@@ -197,35 +192,16 @@ export const Home = () => {
                 </Button>
               </div>
 
-              {/* Compact Event Information Cards (Subtle borders, 8px-10px radius) */}
-              <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
-                {eventHighlights.map((h, i) => {
-                  const Icon = h.icon;
-                  return (
-                    <div
-                      key={i}
-                      className="p-3.5 rounded-lg bg-white border border-[#D0DBD5] shadow-xs flex items-center gap-3"
-                    >
-                      <div className="w-9 h-9 rounded-md bg-[#EEF2ED] text-[#39716B] flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-[#18231F] font-comfortaa">
-                          {h.label}
-                        </div>
-                        <div className="text-[10px] text-[#52605A] font-medium">
-                          {h.sub}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              {/* Trust & Credibility Strip */}
+              <div className="pt-2 flex items-center gap-2 text-xs font-medium text-[#52605A]">
+                <Award className="w-4 h-4 text-[#39716B] flex-shrink-0" />
+                <span>Organized by CSE Association & CSI Student Chapter • AY 2025–2026</span>
               </div>
             </div>
 
             {/* RIGHT COLUMN: Code Workspace Visual (Light Editorial Tone) */}
             <div className="lg:col-span-5">
-              <div className="rounded-xl border border-[#D0DBD5] bg-white shadow-md overflow-hidden">
+              <div className="rounded-2xl border border-[#D0DBD5] bg-white shadow-md overflow-hidden hover:-translate-y-1 transition-transform duration-300">
                 {/* Editor Header Bar */}
                 <div className="px-4 py-3 bg-[#EEF2ED] border-b border-[#D0DBD5] flex items-center justify-between">
                   <div className="flex items-center gap-2">

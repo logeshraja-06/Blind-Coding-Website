@@ -103,3 +103,28 @@
   border-radius: var(--radius-md);
   box-shadow: 0 10px 30px -5px rgba(52, 59, 27, 0.25);
 }
+
+/* Premium Card & Button Hover Design Tokens */
+.premium-card {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.28s ease;
+}
+.premium-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -12px rgba(52, 59, 27, 0.16), 0 8px 16px -4px rgba(57, 113, 184, 0.10);
+  border-color: rgba(57, 113, 184, 0.4);
+}
+
+.premium-btn {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.22s ease,
+              background-color 0.22s ease;
+}
+.premium-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -6px rgba(57, 113, 184, 0.28);
+}
+.premium-btn:active {
+  transform: translateY(0px) scale(0.98);
+}
