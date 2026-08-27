@@ -76,7 +76,7 @@ export const Register = () => {
     }
 
     if (!formData.className.trim()) {
-      errs.className = 'Class is required (e.g. IV CSE A).';
+      errs.className = 'Class is required (e.g. CSE).';
     }
 
     if (!formData.section) {
@@ -224,8 +224,8 @@ export const Register = () => {
 
                 {/* Class */}
                 <Input
-                  label="Class / Batch Code *"
-                  placeholder="e.g. IV CSE A"
+                  label="Class *"
+                  placeholder="e.g. CSE"
                   required
                   icon={Layers}
                   value={formData.className}

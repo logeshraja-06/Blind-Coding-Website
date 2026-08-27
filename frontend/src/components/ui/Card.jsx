@@ -10,22 +10,22 @@ export const Card = ({
   ...props
 }) => {
   const variantStyles = {
-    default: 'bg-white border border-teaGreen-300/60 text-drabDark shadow-subtle',
-    ivory: 'bg-ivory border border-teaGreen-300/80 text-drabDark shadow-subtle',
-    dark: 'bg-drabDark text-ivory border border-drabDark-700 shadow-xl',
-    glass: 'glass-panel text-drabDark shadow-premium',
-    highlight: 'bg-gradient-to-br from-ivory to-vanilla-50 border-2 border-vanilla-300 text-drabDark shadow-subtle',
-    blue: 'bg-celticBlue-50/70 border border-celticBlue-200 text-drabDark shadow-subtle',
+    default: 'bg-white border border-[#D0DBD5] text-[#18231F] shadow-sm',
+    ivory: 'bg-[#F8FAF7] border border-[#D0DBD5] text-[#18231F] shadow-sm',
+    dark: 'bg-[#18231F] text-white border border-[#2D3F38] shadow-md',
+    glass: 'bg-white/90 border border-[#D0DBD5] text-[#18231F] shadow-sm',
+    highlight: 'bg-[#F3F6F1] border border-[#39716B]/30 text-[#18231F] shadow-sm',
+    blue: 'bg-[#3971B8]/5 border border-[#3971B8]/30 text-[#18231F] shadow-sm',
   };
 
   const Component = hoverEffect ? motion.div : 'div';
   const hoverProps = hoverEffect
     ? {
-        whileHover: { y: -4, transition: { duration: 0.2, ease: 'easeOut' } },
-        className: `rounded-2xl transition-all duration-300 ${variantStyles[variant]} ${className}`,
+        whileHover: { y: -3, transition: { duration: 0.2, ease: 'easeOut' } },
+        className: `rounded-xl transition-all duration-200 ${variantStyles[variant]} ${className}`,
       }
     : {
-        className: `rounded-2xl ${variantStyles[variant]} ${className}`,
+        className: `rounded-xl ${variantStyles[variant]} ${className}`,
       };
 
   return (

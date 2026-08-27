@@ -170,7 +170,7 @@ const quizAttemptSchema = new mongoose.Schema(
 
 // Database-level constraint: Unique attempt per student per event
 quizAttemptSchema.index({ studentId: 1, eventId: 1 }, { unique: true });
-quizAttemptSchema.index({ registerNumber: 1, eventId: 1 });
+quizAttemptSchema.index({ registerNumber: 1, eventId: 1 }, { unique: true });
 
 export const QuizAttempt =
   mongoose.models.QuizAttempt || mongoose.model('QuizAttempt', quizAttemptSchema);

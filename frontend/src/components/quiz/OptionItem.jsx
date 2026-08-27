@@ -10,48 +10,52 @@ export const OptionItem = ({
 }) => {
   const letters = ['A', 'B', 'C', 'D'];
   const letter = option.id || letters[index] || 'A';
+  const text = option.text || '';
+  const isMultilineOrCode = text.includes('\n') || text.startsWith('SELECT') || text.startsWith('int') || text.includes('*');
 
   return (
     <motion.button
       type="button"
-      whileHover={{ y: -1.5 }}
+      whileHover={{ y: -1 }}
       whileTap={{ scale: 0.995 }}
       transition={{ duration: 0.15 }}
       onClick={() => onSelect(letter)}
-      className={`w-full text-left p-4 sm:p-5 rounded-2xl border-2 transition-all duration-200 flex items-start gap-4 cursor-pointer focus:outline-none focus:ring-2 focus:ring-celticBlue focus:ring-offset-2 select-none relative ${
+      className={`w-full text-left min-h-[48px] p-3.5 sm:p-4 rounded-lg border transition-colors duration-150 flex items-start gap-3.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#39716B] focus:ring-offset-2 select-none relative ${
         isSelected
-          ? 'bg-celticBlue-50/90 border-celticBlue shadow-md shadow-celticBlue/10 ring-1 ring-celticBlue/20'
-          : 'bg-white border-teaGreen-300/80 hover:border-celticBlue-300 hover:bg-ivory/60 shadow-subtle'
+          ? 'bg-[#39716B]/10 border-[#39716B] text-[#18231F] shadow-xs font-semibold'
+          : 'bg-white border-[#D0DBD5] hover:border-[#39716B]/50 hover:bg-[#F8FAF7] text-[#18231F] shadow-xs font-normal'
       }`}
     >
-      {/* Option Letter Badge (A, B, C, D) */}
+      {/* Option Letter Badge (A, B, C, D) Top-Aligned */}
       <div
-        className={`w-9 h-9 rounded-xl flex items-center justify-center font-comfortaa font-bold text-sm flex-shrink-0 transition-all ${
+        className={`w-8 h-8 rounded-md flex items-center justify-center font-comfortaa font-bold text-xs sm:text-sm flex-shrink-0 transition-colors mt-0.5 ${
           isSelected
-            ? 'bg-celticBlue text-white shadow-sm scale-105'
-            : 'bg-ivory border border-teaGreen-300 text-drabDark/80'
+            ? 'bg-[#39716B] text-white shadow-xs'
+            : 'bg-[#EEF2ED] border border-[#C8D6CD] text-[#18231F]'
         }`}
       >
         {isSelected ? <Check className="w-4 h-4 stroke-[3]" /> : letter}
       </div>
 
-      {/* Option Text Content */}
-      <div className="flex-1 pt-1">
-        <p
-          className={`text-sm sm:text-base leading-relaxed font-poppins ${
-            isSelected ? 'text-drabDark font-semibold' : 'text-drabDark/85 font-normal'
-          }`}
-        >
-          {option.text}
-        </p>
+      {/* Option Content Area with Pre-Wrap Support */}
+      <div className="flex-1 py-0.5 overflow-x-auto">
+        {isMultilineOrCode ? (
+          <pre className="text-xs sm:text-sm leading-relaxed font-mono whitespace-pre-wrap font-medium">
+            <code>{text}</code>
+          </pre>
+        ) : (
+          <p className="text-sm sm:text-base leading-snug font-poppins">
+            {text}
+          </p>
+        )}
       </div>
 
       {/* Selection Check Circle */}
       <div
-        className={`w-5 h-5 rounded-full border-2 mt-1.5 flex items-center justify-center transition-all flex-shrink-0 ${
+        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-1 ${
           isSelected
-            ? 'border-celticBlue bg-celticBlue text-white scale-110'
-            : 'border-teaGreen-400/80 bg-transparent'
+            ? 'border-[#39716B] bg-[#39716B] text-white'
+            : 'border-[#D0DBD5] bg-transparent'
         }`}
       >
         {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}

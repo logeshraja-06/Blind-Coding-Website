@@ -15,31 +15,31 @@ export const Button = ({
   ...props
 }) => {
   const sizeStyles = {
-    sm: 'px-3.5 py-1.5 text-xs rounded-xl gap-1.5 tracking-wide',
-    md: 'px-5 py-2.5 text-sm rounded-xl gap-2 tracking-wide font-semibold',
-    lg: 'px-7 py-3.5 text-base rounded-2xl gap-2.5 tracking-wide font-bold',
-    xl: 'px-9 py-4 text-lg rounded-2xl gap-3 tracking-wide font-bold',
+    sm: 'px-3.5 py-1.5 text-xs rounded-lg gap-1.5 tracking-wide font-medium',
+    md: 'px-5 py-2.5 text-sm rounded-lg gap-2 tracking-wide font-semibold',
+    lg: 'px-6 py-3 text-sm sm:text-base rounded-lg gap-2.5 tracking-wide font-bold',
+    xl: 'px-8 py-3.5 text-base sm:text-lg rounded-lg gap-3 tracking-wide font-bold',
   };
 
   const variantStyles = {
     primary:
-      'bg-gradient-to-b from-celticBlue-500 to-celticBlue-600 text-white border border-celticBlue-400/40 shadow-[0_4px_14px_0_rgba(57,113,184,0.35)] hover:shadow-[0_8px_25px_rgba(57,113,184,0.5)] hover:from-celticBlue-400 hover:to-celticBlue-600 active:shadow-inner',
+      'bg-[#39716B] text-white hover:bg-[#2d5b56] border border-[#39716B]/20 shadow-sm hover:shadow-md transition-all',
     secondary:
-      'bg-teaGreen-100 text-drabDark border border-teaGreen-400 hover:bg-teaGreen-200 shadow-sm hover:shadow-md hover:border-teaGreen-500',
+      'bg-[#EEF2ED] text-[#18231F] border border-[#C8D6CD] hover:bg-[#E2EADF] shadow-sm font-semibold',
     outline:
-      'bg-transparent text-drabDark border-2 border-drabDark/25 hover:border-celticBlue hover:text-celticBlue hover:bg-celticBlue-50/60 shadow-sm',
+      'bg-white text-[#18231F] border border-[#C8D6CD] hover:border-[#39716B] hover:text-[#39716B] hover:bg-[#F3F6F1] shadow-sm',
     outlineBlue:
-      'bg-white/80 backdrop-blur-sm text-celticBlue border-2 border-celticBlue/30 hover:border-celticBlue hover:bg-celticBlue-50 shadow-sm hover:shadow-subtle',
+      'bg-white text-[#3971B8] border border-[#3971B8]/40 hover:border-[#3971B8] hover:bg-[#3971B8]/5 shadow-sm',
     accent:
-      'bg-gradient-to-b from-vanilla to-vanilla-300 text-drabDark border border-vanilla-400 shadow-[0_4px_14px_0_rgba(246,230,165,0.4)] hover:shadow-[0_6px_20px_rgba(238,213,117,0.55)] hover:from-vanilla-100 hover:to-vanilla-300 font-bold',
+      'bg-[#3971B8] text-white hover:bg-[#2d5d99] border border-[#3971B8]/20 shadow-sm hover:shadow-md font-bold',
     danger:
-      'bg-red-50 text-red-700 border border-red-300 hover:bg-red-600 hover:text-white hover:border-red-600 shadow-sm hover:shadow-md transition-colors',
+      'bg-red-50 text-red-700 border border-red-200 hover:bg-red-600 hover:text-white shadow-sm transition-colors',
     warning:
       'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 shadow-sm',
     ghost:
-      'bg-transparent text-drabDark/80 hover:text-celticBlue hover:bg-drabDark/5',
+      'bg-transparent text-[#18231F]/80 hover:text-[#39716B] hover:bg-[#18231F]/5',
     dark:
-      'bg-drabDark text-ivory hover:bg-drabDark-700 border border-drabDark-800 shadow-md hover:shadow-lg',
+      'bg-[#18231F] text-white hover:bg-[#24332e] border border-[#18231F] shadow-sm',
   };
 
   return (

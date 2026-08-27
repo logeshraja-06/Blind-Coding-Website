@@ -46,16 +46,30 @@ const questionSchema = new mongoose.Schema(
     },
     question: {
       type: String,
-      required: [true, 'Question text is required'],
+      default: function () {
+        return this.questionText || '';
+      },
       trim: true,
     },
     questionText: {
       type: String,
       default: function () {
-        return this.question;
+        return this.question || '';
       },
     },
     codeSnippet: {
+      type: String,
+      default: null,
+    },
+    tableName: {
+      type: String,
+      default: null,
+    },
+    tableData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    outputBlock: {
       type: String,
       default: null,
     },

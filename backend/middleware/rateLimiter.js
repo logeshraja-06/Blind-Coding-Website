@@ -17,10 +17,10 @@ export const adminLoginLimiter = rateLimit({
   },
 });
 
-// 2. Student Registration Limiter: Prevents bot registration spam
+// 2. Student Registration Limiter: Supports shared lab networks (up to 500 candidates per window)
 export const registrationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 25, // Up to 25 registrations per 15 minutes per IP (supports shared lab networks)
+  max: 500, // Supports entire batch of 100+ candidates on shared lab IP
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -29,10 +29,10 @@ export const registrationLimiter = rateLimit({
   },
 });
 
-// 3. Quiz Activity Telemetry Limiter: Prevents event logging flood
+// 3. Quiz Activity Telemetry Limiter: Supports shared lab networks
 export const quizActivityLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 60, // Max 60 activity ping events per minute
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -41,10 +41,10 @@ export const quizActivityLimiter = rateLimit({
   },
 });
 
-// 4. Answer Save Limiter: Generous limit so legitimate fast candidates never drop answers!
+// 4. Answer Save Limiter: High capacity for 100+ active candidates on shared lab NAT IP
 export const saveAnswerLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 180, // 180 answer changes per minute (up to 3 clicks/second)
+  max: 5000, // 5000 answer pings per minute per IP to accommodate shared lab routers
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -56,7 +56,7 @@ export const saveAnswerLimiter = rateLimit({
 // 5. General API Limiter
 export const generalLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 500, // 500 general API calls per 5 minutes
+  max: 5000,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

@@ -170,7 +170,11 @@ export const startQuiz = async (req, res) => {
         category: q.category,
         difficulty: q.difficulty,
         question: q.question,
+        questionText: q.questionText || q.question,
         codeSnippet: q.codeSnippet,
+        tableName: q.tableName,
+        tableData: q.tableData,
+        outputBlock: q.outputBlock,
         options: shuffledOptions.map((o) => ({ id: o.id, text: o.text })),
       });
     });
@@ -243,7 +247,11 @@ export const getQuestions = async (req, res) => {
               category: original.category,
               difficulty: original.difficulty,
               question: original.question,
+              questionText: original.questionText || original.question,
               codeSnippet: original.codeSnippet,
+              tableName: original.tableName,
+              tableData: original.tableData,
+              outputBlock: original.outputBlock,
               options: orderedOptions,
             };
           })
@@ -261,7 +269,11 @@ export const getQuestions = async (req, res) => {
       category: q.category,
       difficulty: q.difficulty,
       question: q.question,
+      questionText: q.questionText || q.question,
       codeSnippet: q.codeSnippet,
+      tableName: q.tableName,
+      tableData: q.tableData,
+      outputBlock: q.outputBlock,
       options: q.options.map((o) => ({ id: o.id, text: o.text })),
     }));
 
@@ -275,12 +287,13 @@ export const getQuestions = async (req, res) => {
 // 3. Save Single Answer (MongoDB Map persistence with grace period defense)
 export const saveAnswer = async (req, res) => {
   try {
-    const { registerNumber, questionId, selectedOption } = req.body;
+    const { registerNumber, questionId, selectedOption, selectedOptionId } = req.body;
+    const finalOption = selectedOption !== undefined ? selectedOption : selectedOptionId;
 
-    if (!registerNumber || questionId === undefined || selectedOption === undefined) {
+    if (!registerNumber || questionId === undefined || finalOption === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'registerNumber, questionId, and selectedOption are required.',
+        message: 'registerNumber, questionId, and selectedOption (or selectedOptionId) are required.',
       });
     }
 
@@ -300,14 +313,14 @@ export const saveAnswer = async (req, res) => {
 
       if (elapsedSinceSubmit <= 2000) {
         if (!attempt.answers) attempt.answers = new Map();
-        attempt.answers.set(String(questionId), String(selectedOption));
+        attempt.answers.set(String(questionId), String(finalOption));
 
         // Recalculate score with late answer
         const allQuestions = await Question.find();
         let correctCount = 0;
         allQuestions.forEach((q) => {
           const studentAns = attempt.answers.get(String(q.questionId));
-          if (studentAns === q.correctAnswer) correctCount++;
+          if (studentAns === (q.correctOptionId || q.correctAnswer)) correctCount++;
         });
 
         attempt.score = correctCount;
@@ -328,10 +341,10 @@ export const saveAnswer = async (req, res) => {
     if (!attempt.answers) {
       attempt.answers = new Map();
     }
-    if (selectedOption === null || selectedOption === '') {
+    if (finalOption === null || finalOption === '') {
       attempt.answers.delete(String(questionId));
     } else {
-      attempt.answers.set(String(questionId), String(selectedOption));
+      attempt.answers.set(String(questionId), String(finalOption));
     }
     await attempt.save();
 

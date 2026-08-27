@@ -2,7 +2,10 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OptionItem } from './OptionItem';
 import { Badge } from '../ui/Badge';
-import { Terminal, Check, Loader2, AlertCircle } from 'lucide-react';
+import { DataTable } from '../ui/DataTable';
+import { CodeBlock } from '../ui/CodeBlock';
+import { OutputBlock } from '../ui/OutputBlock';
+import { Check, Loader2, AlertCircle } from 'lucide-react';
 
 export const QuestionCard = ({
   question,
@@ -15,47 +18,49 @@ export const QuestionCard = ({
 }) => {
   if (!question) return null;
 
+  const title = question.questionText || question.question || '';
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        key={question.id}
+        key={question.id || question.questionId}
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
-        className={`w-full bg-white rounded-3xl p-6 sm:p-8 border border-teaGreen-300 shadow-premium transition-opacity ${
+        className={`w-full bg-white rounded-xl p-6 sm:p-8 border border-[#D0DBD5] shadow-xs transition-opacity ${
           disabled ? 'opacity-60 pointer-events-none' : ''
         }`}
       >
-        {/* Question Header & Category */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-teaGreen-200/60">
+        {/* Question Header & Badges */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#D0DBD5]">
           <div className="flex items-center gap-2.5">
-            <span className="text-xs font-bold font-comfortaa uppercase tracking-wider text-celticBlue bg-celticBlue-50 px-3 py-1 rounded-full border border-celticBlue-200">
+            <span className="text-xs font-bold font-comfortaa uppercase tracking-wider text-[#39716B] bg-[#EEF2ED] px-3 py-1 rounded-md border border-[#C8D6CD]">
               Question {String(currentIndex + 1).padStart(2, '0')}
             </span>
-            <span className="text-xs text-drabDark/60 font-medium font-poppins">
+            <span className="text-xs text-[#52605A] font-medium font-poppins">
               Single Choice MCQ
             </span>
 
-            {/* Subtle Inline Save Indicator (No Toast Spam) */}
+            {/* Inline Save Status */}
             {saveStatus === 'saving' && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-drabDark/60 font-poppins animate-pulse">
-                <Loader2 className="w-3 h-3 animate-spin text-celticBlue" /> Saving...
+              <span className="inline-flex items-center gap-1 text-[11px] text-[#52605A] font-poppins animate-pulse">
+                <Loader2 className="w-3 h-3 animate-spin text-[#39716B]" /> Saving...
               </span>
             )}
             {saveStatus === 'retrying' && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-vanilla-600 font-poppins font-medium">
+              <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 font-poppins font-medium">
                 <Loader2 className="w-3 h-3 animate-spin" /> Retrying save...
               </span>
             )}
             {saveStatus === 'saved' && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-teaGreen-600 font-poppins font-semibold">
-                <Check className="w-3.5 h-3.5 text-teaGreen-600 stroke-[3]" /> Saved
+              <span className="inline-flex items-center gap-1 text-[11px] text-[#39D98A] font-poppins font-semibold">
+                <Check className="w-3.5 h-3.5 text-[#39D98A] stroke-[3]" /> Saved
               </span>
             )}
             {saveStatus === 'error' && (
               <span className="inline-flex items-center gap-1 text-[11px] text-red-600 font-poppins font-medium">
-                <AlertCircle className="w-3 h-3" /> Save failed (will retry on submit)
+                <AlertCircle className="w-3 h-3" /> Save failed (will retry)
               </span>
             )}
           </div>
@@ -83,47 +88,40 @@ export const QuestionCard = ({
           </div>
         </div>
 
-        {/* Question Text */}
-        <div className="py-6">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold font-comfortaa text-drabDark leading-snug">
-            {question.question}
+        {/* Question Primary Text */}
+        <div className="pt-5 pb-2">
+          <h2 className="text-base sm:text-lg md:text-xl font-bold font-comfortaa text-[#18231F] leading-snug">
+            {title}
           </h2>
         </div>
 
-        {/* Code Snippet Block (if applicable) */}
-        {question.codeSnippet && (
-          <div className="mb-6 rounded-2xl overflow-hidden bg-drabDark border border-drabDark-700 shadow-inner">
-            {/* Terminal Window Header */}
-            <div className="flex items-center justify-between px-4 py-2.5 bg-drabDark-700 border-b border-drabDark-600">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                <div className="w-3 h-3 rounded-full bg-vanilla/80" />
-                <div className="w-3 h-3 rounded-full bg-teaGreen/80" />
-                <span className="ml-2 text-xs font-mono text-ivory/60 font-medium">
-                  {question.category?.toLowerCase() || 'code'}.snippet
-                </span>
-              </div>
-              <Terminal className="w-3.5 h-3.5 text-ivory/50" />
-            </div>
+        {/* Structured Component 1: Data Table (SQL) */}
+        {question.tableData && (
+          <DataTable tableData={question.tableData} tableName={question.tableName} />
+        )}
 
-            {/* Code Content */}
-            <pre className="p-4 sm:p-5 text-sm font-mono text-teaGreen-100 overflow-x-auto leading-relaxed">
-              <code>{question.codeSnippet}</code>
-            </pre>
-          </div>
+        {/* Structured Component 2: Code Block (Python / Java / SQL) */}
+        {question.codeSnippet && (
+          <CodeBlock code={question.codeSnippet} language={question.category} />
+        )}
+
+        {/* Structured Component 3: Output Block (Console / Patterns) */}
+        {question.outputBlock && (
+          <OutputBlock output={question.outputBlock} />
         )}
 
         {/* MCQ Options List */}
-        <div className="space-y-3 pt-2">
-          {question.options.map((option, idx) => (
-            <OptionItem
-              key={option.id || idx}
-              option={option}
-              index={idx}
-              isSelected={selectedOption === (option.id || ['A', 'B', 'C', 'D'][idx])}
-              onSelect={disabled ? () => {} : onSelectOption}
-            />
-          ))}
+        <div className="space-y-3 pt-3">
+          {question.options &&
+            question.options.map((option, idx) => (
+              <OptionItem
+                key={option.id || idx}
+                option={option}
+                index={idx}
+                isSelected={selectedOption === (option.id || ['A', 'B', 'C', 'D'][idx])}
+                onSelect={disabled ? () => {} : onSelectOption}
+              />
+            ))}
         </div>
       </motion.div>
     </AnimatePresence>

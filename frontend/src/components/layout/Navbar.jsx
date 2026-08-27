@@ -49,45 +49,33 @@ export const Navbar = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-        isDarkHero
-          ? 'py-4 bg-[#141F1D]/80 backdrop-blur-md border-b border-white/10 shadow-sm'
-          : isScrolled
-          ? 'py-3 bg-ivory/95 backdrop-blur-md border-b border-teaGreen-300 shadow-subtle'
-          : 'py-4 bg-ivory/90 backdrop-blur-md border-b border-teaGreen-200'
+      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-200 ${
+        isScrolled
+          ? 'py-2.5 bg-[#FAFBF8]/95 backdrop-blur-md border-b border-[#D0DBD5] shadow-sm'
+          : 'py-3.5 bg-[#FAFBF8]/90 backdrop-blur-md border-b border-[#D0DBD5]/60'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Brand: TECH FORCE Logo + BLIND CODING */}
         <Link to="/" className="flex items-center gap-3 group focus-ring rounded-lg px-1 py-0.5">
-          <TechForceLogo className="w-10 h-10 group-hover:scale-105 transition-transform" />
-          <div className={`hidden sm:block border-l-2 pl-3 ${isDarkHero ? 'border-white/20' : 'border-drabDark/20'}`}>
-            <span className={`font-comfortaa font-bold text-lg tracking-tight block leading-none ${isDarkHero ? 'text-white' : 'text-drabDark'}`}>
-              BLIND <span className={isDarkHero ? 'text-[#39D98A]' : 'text-celticBlue'}>CODING</span>
+          <TechForceLogo className="w-9 h-9 group-hover:scale-105 transition-transform" />
+          <div className="border-l border-[#18231F]/20 pl-3">
+            <span className="font-comfortaa font-bold text-base sm:text-lg tracking-tight block leading-none text-[#18231F]">
+              BLIND <span className="text-[#39716B]">CODING</span>
             </span>
-            <span className={`text-[10px] font-semibold tracking-wider uppercase block mt-0.5 ${isDarkHero ? 'text-teaGreen-200/80' : 'text-drabDark/60'}`}>
+            <span className="text-[10px] font-semibold tracking-wider uppercase block mt-0.5 text-[#52605A]">
               CSE Dept • AY 2025–2026
             </span>
           </div>
         </Link>
 
         {/* Desktop Nav Links */}
-        <nav
-          className={`hidden md:flex items-center gap-1 px-4 py-1.5 rounded-full border shadow-sm backdrop-blur-md transition-colors ${
-            isDarkHero
-              ? 'bg-white/10 border-white/15 text-white'
-              : 'bg-white/80 border-teaGreen-300 text-drabDark'
-          }`}
-        >
+        <nav className="hidden md:flex items-center gap-1 px-3 py-1 rounded-lg border border-[#D0DBD5] bg-white shadow-xs">
           {navLinks.map((link) => (
             <button
               key={link.name}
               onClick={() => handleNavClick(link.path)}
-              className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition-colors cursor-pointer font-poppins ${
-                isDarkHero
-                  ? 'text-white/90 hover:text-[#39D98A] hover:bg-white/10'
-                  : 'text-drabDark/80 hover:text-celticBlue hover:bg-teaGreen-100/60'
-              }`}
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer text-[#52605A] hover:text-[#39716B] hover:bg-[#F3F6F1]"
             >
               {link.name}
             </button>
@@ -98,24 +86,16 @@ export const Navbar = () => {
         <div className="hidden sm:flex items-center gap-3">
           <Link
             to="/admin"
-            className={`text-xs font-semibold px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 font-poppins ${
-              isDarkHero
-                ? 'text-white/80 hover:text-[#39D98A] hover:bg-white/10'
-                : 'text-drabDark/70 hover:text-celticBlue hover:bg-teaGreen-100/50'
-            }`}
+            className="text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 text-[#52605A] hover:text-[#3971B8] hover:bg-[#3971B8]/5"
           >
-            <ShieldCheck className={`w-4 h-4 ${isDarkHero ? 'text-[#39D98A]' : 'text-celticBlue'}`} />
+            <ShieldCheck className="w-4 h-4 text-[#3971B8]" />
             <span>Admin</span>
           </Link>
           <Button
             size="sm"
             variant="primary"
             onClick={() => navigate('/register')}
-            className={`font-bold shadow-sm px-5 font-poppins ${
-              isDarkHero
-                ? 'bg-[#39D98A] hover:bg-[#2ecc71] text-[#064E3B] border-none'
-                : 'bg-celticBlue hover:bg-celticBlue-600 text-white'
-            }`}
+            className="font-bold shadow-xs px-4"
             icon={ArrowRight}
             iconPosition="right"
           >
@@ -126,9 +106,7 @@ export const Navbar = () => {
         {/* Mobile Menu Button */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className={`md:hidden p-2 rounded-xl transition-colors ${
-            isDarkHero ? 'text-white hover:bg-white/10' : 'text-drabDark hover:bg-teaGreen-100'
-          }`}
+          className="md:hidden p-2 rounded-lg text-[#18231F] hover:bg-[#EEF2ED] transition-colors"
           aria-label="Toggle menu"
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -142,13 +120,9 @@ export const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className={`md:hidden border-b shadow-xl overflow-hidden px-4 py-5 ${
-              isDarkHero
-                ? 'bg-[#141F1D] border-white/10 text-white'
-                : 'bg-ivory border-teaGreen-300 text-drabDark'
-            }`}
+            className="md:hidden border-b border-[#D0DBD5] shadow-lg overflow-hidden px-4 py-4 bg-[#FAFBF8] text-[#18231F]"
           >
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               {navLinks.map((link) => (
                 <button
                   key={link.name}
@@ -156,19 +130,15 @@ export const Navbar = () => {
                     handleNavClick(link.path);
                     setMobileMenuOpen(false);
                   }}
-                  className={`text-left px-4 py-2.5 rounded-xl font-medium transition-colors font-poppins ${
-                    isDarkHero
-                      ? 'text-white/90 hover:bg-white/10 hover:text-[#39D98A]'
-                      : 'text-drabDark hover:bg-teaGreen-100 hover:text-celticBlue'
-                  }`}
+                  className="text-left px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors text-[#18231F] hover:bg-[#EEF2ED] hover:text-[#39716B]"
                 >
                   {link.name}
                 </button>
               ))}
-              <div className="pt-3 border-t border-teaGreen-200/40 flex flex-col gap-2">
+              <div className="pt-3 border-t border-[#D0DBD5] flex flex-col gap-2">
                 <Button
                   variant="primary"
-                  className="w-full justify-center font-bold font-poppins bg-[#39D98A] hover:bg-[#2ecc71] text-[#064E3B] border-none"
+                  className="w-full justify-center font-bold"
                   onClick={() => {
                     navigate('/register');
                     setMobileMenuOpen(false);
@@ -181,9 +151,7 @@ export const Navbar = () => {
                 <Link
                   to="/admin"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`text-center py-2 text-xs font-semibold hover:underline flex items-center justify-center gap-1.5 font-poppins ${
-                    isDarkHero ? 'text-teaGreen-200' : 'text-celticBlue'
-                  }`}
+                  className="text-center py-2 text-xs font-semibold text-[#3971B8] hover:underline flex items-center justify-center gap-1.5"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   <span>Admin Panel</span>

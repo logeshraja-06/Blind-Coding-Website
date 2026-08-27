@@ -15,6 +15,7 @@ const router = express.Router();
 router.get('/config', getPublicQuizConfig);
 router.post('/start', startQuiz);
 router.get('/questions', getQuestions);
+router.post('/save-answer', saveAnswerLimiter, saveAnswer);
 router.patch('/save-answer', saveAnswerLimiter, saveAnswer);
 router.post('/activity', quizActivityLimiter, logActivity);
 router.post('/submit', submitQuiz);
