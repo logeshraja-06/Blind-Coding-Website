@@ -44,6 +44,7 @@ export const Register = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateError, setDuplicateError] = useState(null);
+  const [completedRegNo, setCompletedRegNo] = useState(null);
 
   const years = [
     { value: 'I Year', label: 'I Year (First Year)' },
@@ -90,6 +91,7 @@ export const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setDuplicateError(null);
+    setCompletedRegNo(null);
     if (!validate()) return;
 
     setIsSubmitting(true);
@@ -100,6 +102,9 @@ export const Register = () => {
         navigate('/welcome');
       } else {
         setDuplicateError(res.message || 'Registration error.');
+        if (res.isAlreadyCompleted || res.status === 'COMPLETED') {
+          setCompletedRegNo(res.registerNumber || formData.registerNumber);
+        }
         addToast(res.message, 'error', 4000);
       }
     } catch (err) {
@@ -146,12 +151,28 @@ export const Register = () => {
 
               {/* Duplicate / Blocked Warning Notice */}
               {duplicateError && (
-                <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-300 text-red-900 text-xs flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="block font-bold">Attempt Notice</strong>
-                    {duplicateError}
+                <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-300 text-red-900 text-xs space-y-2">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block font-bold">Attempt Notice</strong>
+                      {duplicateError}
+                    </div>
                   </div>
+                  {completedRegNo && (
+                    <div className="pt-2 text-left">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => navigate('/result', { state: { registerNumber: completedRegNo } })}
+                        className="text-xs font-bold"
+                        icon={ArrowRight}
+                        iconPosition="right"
+                      >
+                        VIEW YOUR RESULT CARD
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 

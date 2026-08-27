@@ -37,10 +37,12 @@ export const registerStudent = async (req, res) => {
 
     if (existingAttempt) {
       if (existingAttempt.status === 'COMPLETED') {
-        return res.status(403).json({
+        return res.status(200).json({
           success: false,
+          isAlreadyCompleted: true,
           message: 'You have already completed the Blind Coding challenge. Only one official attempt is permitted.',
           status: 'COMPLETED',
+          registerNumber: regNoClean,
           score: existingAttempt.score,
           total: existingAttempt.totalQuestions,
           submittedAt: existingAttempt.submittedAt,
